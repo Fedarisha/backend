@@ -1,6 +1,8 @@
 import { CqrsModule } from '@nestjs/cqrs';
 import { Module } from '@nestjs/common';
 
+import { FedarishaProvisioningModule } from '@modules/fedarisha-provisioning';
+
 import { SubscriptionTemplateRepository } from './repositories/subscription-template.repository';
 import { ResolveProxyConfigService } from './resolve-proxy/resolve-proxy-config.service';
 import { SubscriptionTemplateController } from './subscription-template.controller';
@@ -10,7 +12,7 @@ import { RenderTemplatesService } from './render-templates.service';
 import { TEMPLATE_RENDERERS } from './generators';
 import { QUERIES } from './queries';
 @Module({
-    imports: [CqrsModule],
+    imports: [CqrsModule, FedarishaProvisioningModule],
     controllers: [SubscriptionTemplateController],
     providers: [
         SubscriptionTemplateService,

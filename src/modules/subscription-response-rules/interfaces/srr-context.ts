@@ -7,6 +7,7 @@ export interface ISRRContext {
     userAgent: string;
     hwidHeaders: HwidHeaders | null;
     isExtendedClient: boolean;
+    supportsFedarisha: boolean;
     matchedResponseType: TResponseRulesResponseType;
     ip: string;
     subscriptionSettings: SubscriptionSettingsEntity;

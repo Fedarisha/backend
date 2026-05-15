@@ -7,6 +7,7 @@ import { HttpExceptionWithErrorCodeType } from '@common/exception/http-execeptio
 import { extractHwidHeaders } from '@common/utils/extract-hwid-headers/extract-hwid-headers.util';
 import {
     ERRORS,
+    REQUEST_TEMPLATE_TYPE,
     RESPONSE_RULES_RESPONSE_TYPES,
     TRequestTemplateTypeKeys,
 } from '@libs/contracts/constants';
@@ -84,6 +85,7 @@ export class ResponseRulesMiddleware implements NestMiddleware {
                     userAgent,
                     result.matchedRule?.responseModifications?.additionalExtendedClientsRegex,
                 ),
+                supportsFedarisha: overrideClientType === REQUEST_TEMPLATE_TYPE.FEDARISHA_JSON,
                 matchedResponseType: result.responseType,
                 ip: req.clientIp,
                 subscriptionSettings: settingsEntity,
