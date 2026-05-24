@@ -2,7 +2,7 @@ FROM alpine:3.19 AS frontend
 WORKDIR /opt/frontend
 
 ARG BRANCH=main
-ARG FRONTEND_URL=https://github.com/remnawave/frontend/releases/latest/download/remnawave-frontend.zip
+ARG FRONTEND_URL=https://github.com/Fedarisha/frontend/releases/latest/download/remnawave-frontend.zip
 
 RUN --mount=type=secret,id=clone_token apk add --no-cache curl unzip ca-certificates \
     && AUTH_HEADER="" \

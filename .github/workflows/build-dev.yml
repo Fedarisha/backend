@@ -52,7 +52,7 @@ jobs:
         run: |
           echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-          echo "frontend_commit=$(curl -s https://api.github.com/repos/remnawave/frontend/commits/${{ github.ref_name }} | jq -r '.sha')" >> $GITHUB_OUTPUT
+          echo "frontend_commit=$(curl -s https://api.github.com/repos/Fedarisha/frontend/commits/${{ github.ref_name }} | jq -r '.sha')" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -62,10 +62,10 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            remnawave/backend:dev
-            ghcr.io/remnawave/backend:dev
+            voltara13/backend:dev
+            ghcr.io/fedarisha/backend:dev
           build-args: |
-            FRONTEND_URL=https://github.com/remnawave/frontend/releases/download/dev-build/remnawave-frontend.zip
+            FRONTEND_URL=https://github.com/Fedarisha/frontend/releases/download/dev-build/remnawave-frontend.zip
             BRANCH=dev
             __RW_METADATA_VERSION=${{ steps.meta.outputs.version }}
             __RW_METADATA_GIT_BRANCH=${{ github.ref_name }}

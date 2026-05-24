@@ -60,7 +60,7 @@ jobs:
         run: |
           echo "version=$(jq -r .version package.json)" >> $GITHUB_OUTPUT
           echo "build_time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
-          echo "frontend_commit=$(curl -s https://api.github.com/repos/remnawave/frontend/commits/${{ github.ref_name }} | jq -r '.sha')" >> $GITHUB_OUTPUT
+          echo "frontend_commit=$(curl -s https://api.github.com/repos/Fedarisha/frontend/commits/${{ github.ref_name }} | jq -r '.sha')" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v3
@@ -76,12 +76,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            remnawave/backend:latest
-            remnawave/backend:${{github.ref_name}}
-            remnawave/backend:2
-            ghcr.io/remnawave/backend:latest
-            ghcr.io/remnawave/backend:${{github.ref_name}}
-            ghcr.io/remnawave/backend:2
+            voltara13/backend:latest
+            voltara13/backend:${{github.ref_name}}
+            ghcr.io/fedarisha/backend:latest
+            ghcr.io/fedarisha/backend:${{github.ref_name}}
 
   create-release:
     needs: [build-docker-image]
@@ -133,12 +131,12 @@ jobs:
             ${{ env.CHANGELOG }}
 
             Latest Docker image:
-            - `remnawave/backend:latest`
-            - `ghcr.io/remnawave/backend:latest`
+            - `voltara13/backend:latest`
+            - `ghcr.io/fedarisha/backend:latest`
 
             Docker images:
-            - `remnawave/backend:${{github.ref_name}}`
-            - `ghcr.io/remnawave/backend:${{github.ref_name}}`
+            - `voltara13/backend:${{github.ref_name}}`
+            - `ghcr.io/fedarisha/backend:${{github.ref_name}}`
 
   send-finish-tg-msg:
     name: Send TG message
