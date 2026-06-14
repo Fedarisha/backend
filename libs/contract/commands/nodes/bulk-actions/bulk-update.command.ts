@@ -26,6 +26,13 @@ export namespace BulkNodesUpdateCommand {
                     .max(100.0, 'Consumption multiplier must be less than 100.0')
                     .transform((n) => Number(n.toFixed(1))),
             ),
+            nodeConsumptionMultiplier: z.optional(
+                z
+                    .number()
+                    .min(0.0, 'Node consumption multiplier must be greater than 0.0')
+                    .max(100.0, 'Node consumption multiplier must be less than 100.0')
+                    .transform((n) => Number(n.toFixed(1))),
+            ),
             providerUuid: z.optional(z.nullable(z.string().uuid())),
             tags: z.optional(
                 z
@@ -41,6 +48,9 @@ export namespace BulkNodesUpdateCommand {
                     .max(10, 'Maximum 10 tags'),
             ),
             activePluginUuid: z.optional(z.nullable(z.string().uuid())),
+            note: z.optional(
+                z.string().max(255, 'Note must be less than 255 characters').nullable(),
+            ),
         }),
     });
 

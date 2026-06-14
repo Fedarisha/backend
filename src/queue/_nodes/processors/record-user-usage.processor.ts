@@ -9,7 +9,7 @@ import { Logger } from '@nestjs/common';
 
 import { GetUsersStatsCommand } from '@remnawave/node-contract';
 
-import { fromNanoToNumber } from '@common/utils/nano';
+import { multiplyConsumption } from '@common/utils/nano';
 import { RawCacheService } from '@common/raw-cache';
 import { AxiosService } from '@common/axios';
 import {
@@ -50,14 +50,17 @@ export class RecordUserUsageQueueProcessor extends WorkerHost {
 
     async process(job: Job<IRecordUserUsagePayload>) {
         try {
-            const { nodeUuid, nodeAddress, nodePort, consumptionMultiplier, nodeId } = job.data;
+            const { nodeUuid, connectionOpts, consumptionMultiplier, nodeId } = job.data;
 
             const response = await this.axios.getUsersStats(
                 {
                     reset: true,
                 },
-                nodeAddress,
-                nodePort,
+                {
+                    address: connectionOpts.address,
+                    port: connectionOpts.port,
+                    proxyUrl: connectionOpts.proxyUrl,
+                },
             );
 
             switch (response.isOk) {
@@ -76,7 +79,7 @@ export class RecordUserUsageQueueProcessor extends WorkerHost {
                     );
 
                     this.logger.error(
-                        `Failed to get users stats, node: ${nodeUuid} – ${nodeAddress}:${nodePort}, error: ${JSON.stringify(
+                        `Failed to get users stats, node: ${nodeUuid} – ${connectionOpts.address}:${connectionOpts.port}, error: ${JSON.stringify(
                             response,
                         )}`,
                     );
@@ -136,7 +139,7 @@ export class RecordUserUsageQueueProcessor extends WorkerHost {
 
                 userUsageList[userUsageIndex++] = {
                     u: user.username,
-                    b: this.multiplyConsumption(consumptionMultiplier, totalBytes).toString(),
+                    b: multiplyConsumption(consumptionMultiplier, totalBytes).toString(),
                     n: nodeUuid,
                 };
             });
@@ -174,19 +177,5 @@ export class RecordUserUsageQueueProcessor extends WorkerHost {
                 );
             }
         }
-    }
-
-    private multiplyConsumption(consumptionMultiplier: string, totalBytes: number): bigint {
-        const multiplier = BigInt(consumptionMultiplier);
-        if (multiplier === 0n) {
-            return 0n;
-        }
-
-        if (multiplier === BigInt(1000000000)) {
-            // skip if 1:1 ratio
-            return BigInt(totalBytes);
-        }
-
-        return BigInt(Math.floor(fromNanoToNumber(multiplier) * totalBytes));
     }
 }

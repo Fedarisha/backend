@@ -1,5 +1,5 @@
 import { jsonArrayFrom } from 'kysely/helpers/postgres';
-import { ExpressionBuilder } from 'kysely';
+import { ExpressionBuilder, sql } from 'kysely';
 import { Prisma } from '@prisma/client';
 
 import { DB } from 'prisma/generated/types';
@@ -8,6 +8,7 @@ import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-pr
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { Injectable } from '@nestjs/common';
 
+import { values } from '@common/helpers/kysely/values';
 import { TxKyselyService } from '@common/database';
 import { getKyselyUuid } from '@common/helpers';
 
@@ -247,14 +248,22 @@ export class ConfigProfileRepository {
             viewPosition: number;
         }[],
     ): Promise<boolean> {
-        await this.prisma.withTransaction(async () => {
-            for (const { uuid, viewPosition } of dto) {
-                await this.prisma.tx.configProfiles.updateMany({
-                    where: { uuid },
-                    data: { viewPosition },
-                });
-            }
-        });
+        if (dto.length === 0) return true;
+
+        const v = values(
+            dto.map(({ uuid, viewPosition }) => ({
+                uuid: sql<string>`${uuid}::uuid`,
+                viewPosition: sql<number>`${viewPosition}::int`,
+            })),
+            'v',
+        );
+
+        await this.qb.kysely
+            .updateTable('configProfiles')
+            .from(v)
+            .set((eb) => ({ viewPosition: eb.ref('v.viewPosition') }))
+            .whereRef('configProfiles.uuid', '=', 'v.uuid')
+            .execute();
 
         await this.prisma.tx
             .$executeRaw`SELECT setval('config_profiles_view_position_seq', (SELECT MAX(view_position) FROM config_profiles) + 1)`;

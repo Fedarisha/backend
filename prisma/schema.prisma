@@ -25,8 +25,9 @@ generator json {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model RemnawaveSettings {
@@ -162,11 +163,12 @@ model Keygen {
 }
 
 model Nodes {
-  id      BigInt @unique @default(autoincrement()) @map("id")
-  uuid    String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name    String @unique @map("name")
-  address String @unique @map("address")
-  port    Int?   @map("port")
+  id       BigInt  @unique @default(autoincrement()) @map("id")
+  uuid     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String  @unique @map("name")
+  address  String  @unique @map("address")
+  port     Int?    @map("port")
+  proxyUrl String? @map("proxy_url")
 
   activeConfigProfileUuid String? @map("active_config_profile_uuid") @db.Uuid
   activePluginUuid        String? @map("active_plugin_uuid") @db.Uuid
@@ -177,8 +179,10 @@ model Nodes {
 
   lastStatusChange  DateTime? @map("last_status_change")
   lastStatusMessage String?   @map("last_status_message")
+  note              String?   @map("note") @db.VarChar(255)
 
-  consumptionMultiplier BigInt @default(1000000000) @map("consumption_multiplier")
+  consumptionMultiplier     BigInt @default(1000000000) @map("consumption_multiplier")
+  nodeConsumptionMultiplier BigInt @default(1000000000) @map("node_consumption_multiplier")
 
   isTrafficTrackingActive Boolean @default(false) @map("is_traffic_tracking_active")
   trafficResetDay         Int?    @default(1) @map("traffic_reset_day")
@@ -275,15 +279,17 @@ model Hosts {
   isDisabled                   Boolean  @default(false) @map("is_disabled")
   serverDescription            String?  @map("server_description") @db.VarChar(30)
   vlessRouteId                 Int?     @map("vless_route_id")
-  allowInsecure                Boolean  @default(false) @map("allow_insecure")
+  pinnedPeerCertSha256         String?  @map("pinned_peer_cert_sha256")
+  verifyPeerCertByName         String?  @map("verify_peer_cert_by_name")
   shuffleHost                  Boolean  @default(false) @map("shuffle_host")
   mihomoX25519                 Boolean  @default(false) @map("mihomo_x25519")
+  mihomoIpVersion              String?  @map("mihomo_ip_version") // ENUM: dual, ipv4, ipv6, ipv4-prefer, ipv6-prefer
   xrayJsonTemplateUuid         String?  @map("xray_json_template_uuid") @db.Uuid
   keepSniBlank                 Boolean  @default(false) @map("keep_sni_blank")
   excludeFromSubscriptionTypes String[] @default([]) @map("exclude_from_subscription_types")
 
-  tag      String? @map("tag")
-  isHidden Boolean @default(false) @map("is_hidden")
+  tags     String[] @default([]) @map("tags")
+  isHidden Boolean  @default(false) @map("is_hidden")
 
   overrideSniFromAddress Boolean @default(false) @map("override_sni_from_address")
 
@@ -353,18 +359,19 @@ model SubscriptionSettings {
 
 model HwidUserDevices {
   hwid        String  @map("hwid")
-  userUuid    String  @map("user_uuid") @db.Uuid
+  userId      BigInt  @map("user_id")
   platform    String? @map("platform")
   osVersion   String? @map("os_version")
   deviceModel String? @map("device_model")
   userAgent   String? @map("user_agent")
+  requestIp   String? @map("request_ip")
 
-  user Users @relation(fields: [userUuid], references: [uuid], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
 
   createdAt DateTime @default(dbgenerated("now()")) @map("created_at")
   updatedAt DateTime @default(dbgenerated("now()")) @updatedAt @map("updated_at")
 
-  @@id([hwid, userUuid])
+  @@id([hwid, userId])
   @@map("hwid_user_devices")
 }
 
@@ -504,14 +511,14 @@ model InfraBillingHistory {
 
 model UserSubscriptionRequestHistory {
   id        BigInt   @id @default(autoincrement())
-  userUuid  String   @map("user_uuid") @db.Uuid
+  userId    BigInt   @map("user_id")
   requestIp String?  @map("request_ip")
   userAgent String?  @map("user_agent")
   requestAt DateTime @default(dbgenerated("now()")) @map("request_at")
 
-  user Users @relation(fields: [userUuid], references: [uuid], onDelete: Cascade)
+  user Users @relation(fields: [userId], references: [tId], onDelete: Cascade)
 
-  @@index([userUuid])
+  @@index([userId])
   @@index([requestAt(sort: Asc)])
   @@map("user_subscription_request_history")
 }

@@ -96,7 +96,11 @@ export class StartNodeProcessor extends WorkerHost {
                 }),
             );
 
-            const xrayStatusResponse = await this.axios.getNodeHealth(node.address, node.port);
+            const xrayStatusResponse = await this.axios.getNodeHealth({
+                address: node.address,
+                port: node.port,
+                proxyUrl: node.proxyUrl,
+            });
 
             if (!xrayStatusResponse.isOk) {
                 await this.commandBus.execute(
@@ -161,8 +165,11 @@ export class StartNodeProcessor extends WorkerHost {
                 {
                     plugin,
                 },
-                node.address,
-                node.port,
+                {
+                    address: node.address,
+                    port: node.port,
+                    proxyUrl: node.proxyUrl,
+                },
             );
 
             if (!syncNodePluginsResponse.isOk) {
@@ -206,8 +213,11 @@ export class StartNodeProcessor extends WorkerHost {
                     ) as unknown as Record<string, unknown>,
                     internals: { hashes: config.response.hashesPayload, forceRestart: false },
                 },
-                node.address,
-                node.port,
+                {
+                    address: node.address,
+                    port: node.port,
+                    proxyUrl: node.proxyUrl,
+                },
             );
 
             this.logger.log(`Started node in ${formatExecutionTime(reqStartTime)}`);

@@ -50,7 +50,7 @@ export class ResponseRulesMiddleware implements NestMiddleware {
                 );
             }
 
-            const headersToAppend: Record<string, string> = {
+            const headersToAppend: Record<string, string | string[]> = {
                 'x-remnawave-injected-short-uuid': req.params.shortUuid,
             };
 
@@ -114,6 +114,14 @@ export class ResponseRulesMiddleware implements NestMiddleware {
                 }
                 if (mods.ignoreServeJsonAtBaseSubscription) {
                     ssrContext.ignoreServeJsonAtBaseSubscription = true;
+                }
+
+                if (mods.disableHwidCheck) {
+                    ssrContext.disableHwidCheck = true;
+                }
+
+                if (mods.encryption) {
+                    ssrContext.encryption = mods.encryption;
                 }
             }
 
