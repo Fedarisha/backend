@@ -14,7 +14,7 @@ RUN --mount=type=secret,id=clone_token apk add --no-cache curl unzip ca-certific
     && curl -L https://validator.remna.dev/xray.schema.cn.json -o frontend_temp/dist/assets/xray.schema.cn.json \
     && curl -L https://validator.remna.dev/main.wasm -o frontend_temp/dist/assets/main.wasm
 
-FROM node:24.14-trixie-slim AS backend-build
+FROM node:24.16-trixie-slim AS backend-build
 WORKDIR /opt/app
 
 # RUN apk add python3 python3-dev build-base pkgconfig libunwind-dev
@@ -41,7 +41,7 @@ RUN npm cache clean --force
 
 RUN npm prune --omit=dev
 
-FROM node:24.14-trixie-slim
+FROM node:24.16-trixie-slim
 
 LABEL org.opencontainers.image.title="Remnawave"
 LABEL org.opencontainers.image.description="Powerful proxy management tool"
