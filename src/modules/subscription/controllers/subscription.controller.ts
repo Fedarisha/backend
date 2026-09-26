@@ -1,27 +1,27 @@
 import { Response } from 'express';
 
 import { Controller, Get, HttpStatus, Param, Res, UseFilters } from '@nestjs/common';
-import { ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 
-import { PublicHttpExceptionFilter } from '@common/exception/public-http-exception.filter';
-import { HttpExceptionFilter } from '@common/exception/http-exception.filter';
-import { errorHandler } from '@common/helpers/error-handler.helper';
-import { GetSrrContext } from '@common/decorators/get-srr-context';
 import { Endpoint } from '@common/decorators/base-endpoint';
+import { GetSrrContext } from '@common/decorators/get-srr-context';
+import { HttpExceptionFilter } from '@common/exception/http-exception.filter';
+import { PublicHttpExceptionFilter } from '@common/exception/public-http-exception.filter';
+import { errorHandler } from '@common/helpers/error-handler.helper';
 import {
     CONTROLLERS_INFO,
     SUBSCRIPTION_CONTROLLER,
     SUBSCRIPTION_ROUTES,
 } from '@libs/contracts/api';
 import { GetSubscriptionInfoByShortUuidCommand } from '@libs/contracts/commands';
-import { REQUEST_TEMPLATE_TYPE } from '@libs/contracts/constants';
 
+import type { ISRRContext } from '@modules/subscription-response-rules/interfaces';
 import { ResponseRulesEncryptionService } from '@modules/subscription-response-rules/services/response-rules-encryption.service';
-import { ISRRContext } from '@modules/subscription-response-rules/interfaces';
 
 import {
-    GetSubscriptionByShortUuidByClientTypeRequestDto,
-    GetSubscriptionInfoRequestDto,
+    GetSubscriptionByShortUuidByClientTypeParamDto,
+    GetSubscriptionByShortUuidParamDto,
+    GetSubscriptionInfoParamDto,
     GetSubscriptionInfoResponseDto,
 } from '../dto';
 import {
@@ -29,7 +29,6 @@ import {
     SubscriptionRawResponse,
     SubscriptionWithConfigResponse,
 } from '../models';
-import { GetSubscriptionByShortUuidRequestDto } from '../dto/get-subscription.dto';
 import { SubscriptionService } from '../subscription.service';
 
 @ApiTags(CONTROLLERS_INFO.SUBSCRIPTION.tag)
@@ -62,27 +61,17 @@ export class SubscriptionController {
         return response.type(contentType).send(body);
     }
 
-    @ApiParam({
-        name: 'shortUuid',
-        type: String,
-        description: 'Short UUID of the user',
-        required: true,
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Subscription info fetched successfully',
-        type: GetSubscriptionInfoResponseDto,
-    })
     @Endpoint({
         command: GetSubscriptionInfoByShortUuidCommand,
         httpCode: HttpStatus.OK,
+        type: GetSubscriptionInfoResponseDto,
     })
     async getSubscriptionInfoByShortUuid(
-        @Param() { shortUuid }: GetSubscriptionInfoRequestDto,
+        @Param() param: GetSubscriptionInfoParamDto,
     ): Promise<GetSubscriptionInfoResponseDto> {
         const result = await this.subscriptionService.getSubscriptionInfo({
             searchBy: {
-                uniqueField: shortUuid,
+                uniqueField: param.shortUuid,
                 uniqueFieldKey: 'shortUuid',
             },
             authenticated: false,
@@ -94,21 +83,15 @@ export class SubscriptionController {
         };
     }
 
-    @ApiParam({
-        name: 'shortUuid',
-        type: String,
-        description: 'Short UUID of the user',
-        required: true,
-    })
     @Get([SUBSCRIPTION_ROUTES.GET + '/:shortUuid'])
     async getSubscription(
         @GetSrrContext() srrContext: ISRRContext,
-        @Param() { shortUuid }: GetSubscriptionByShortUuidRequestDto,
+        @Param() param: GetSubscriptionByShortUuidParamDto,
         @Res() response: Response,
     ): Promise<Response> {
         const result = await this.subscriptionService.getSubscriptionByShortUuid(
             srrContext,
-            shortUuid,
+            param.shortUuid,
         );
 
         if (result instanceof SubscriptionNotFoundResponse) {
@@ -122,29 +105,16 @@ export class SubscriptionController {
         return this.finalizeSubscriptionResponse(response, srrContext, result);
     }
 
-    @ApiParam({
-        name: 'shortUuid',
-        type: String,
-        description: 'Short UUID of the user',
-        required: true,
-    })
-    @ApiParam({
-        name: 'clientType',
-        type: String,
-        description: 'Client type',
-        required: true,
-        enum: REQUEST_TEMPLATE_TYPE,
-    })
     @UseFilters(PublicHttpExceptionFilter)
     @Get([SUBSCRIPTION_ROUTES.GET + '/:shortUuid' + '/:clientType'])
     async getSubscriptionByClientType(
         @GetSrrContext() srrContext: ISRRContext,
-        @Param() { shortUuid }: GetSubscriptionByShortUuidByClientTypeRequestDto,
+        @Param() param: GetSubscriptionByShortUuidByClientTypeParamDto,
         @Res() response: Response,
     ): Promise<Response> {
         const result = await this.subscriptionService.getSubscriptionByShortUuid(
             srrContext,
-            shortUuid,
+            param.shortUuid,
         );
 
         if (result instanceof SubscriptionNotFoundResponse) {

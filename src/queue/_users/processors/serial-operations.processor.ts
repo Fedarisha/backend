@@ -2,21 +2,20 @@ import { Job } from 'bullmq';
 import dayjs from 'dayjs';
 
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 
-import { wrapBigInt, wrapBigIntNullable } from '@common/utils';
-import { ConfigSchema } from '@common/config/app-config';
+import { TypedConfigService } from '@common/config/app-config';
 import { ok, TResult } from '@common/types';
+import { wrapBigInt, wrapBigIntNullable } from '@common/utils';
 import { EVENTS, TUsersStatus, USERS_STATUS } from '@libs/contracts/constants';
 
-import { GetUsersByExpireAtQuery } from '@modules/users/queries/get-users-by-expire-at/get-users-by-expire-at.query';
 import { BulkAllExtendExpirationDateCommand } from '@modules/users/commands/bulk-all-extend-expiration-date';
-import { BulkAllUpdateUsersRequestDto } from '@modules/users/dtos/bulk/bulk-operations.dto';
 import { BulkDeleteByStatusCommand } from '@modules/users/commands/bulk-delete-by-status';
-import { BulkUpdateAllUsersCommand } from '@modules/users/commands/bulk-update-all-users';
 import { BulkSyncUsersCommand } from '@modules/users/commands/bulk-sync-users';
+import { BulkUpdateAllUsersCommand } from '@modules/users/commands/bulk-update-all-users';
+import { BulkAllUpdateUsersBodyDto } from '@modules/users/dtos/bulk/bulk-operations.dto';
+import { GetUsersByExpireAtQuery } from '@modules/users/queries/get-users-by-expire-at/get-users-by-expire-at.query';
 
 import { NodesQueuesService } from '@queue/_nodes/nodes-queues.service';
 import { QUEUES_NAMES } from '@queue/queue.enum';
@@ -34,7 +33,7 @@ export class SerialUsersOperationsQueueProcessor extends WorkerHost {
         private readonly queryBus: QueryBus,
         private readonly nodesQueuesService: NodesQueuesService,
         private readonly commandBus: CommandBus,
-        private readonly configService: ConfigService<ConfigSchema>,
+        private readonly configService: TypedConfigService,
         private readonly usersQueuesService: UsersQueuesService,
     ) {
         super();
@@ -57,7 +56,12 @@ export class SerialUsersOperationsQueueProcessor extends WorkerHost {
     }
 
     private async handleExpireUserNotifications() {
-        const intervals = this.configService.getOrThrow<number[]>('EXPIRATION_NOTIFICATIONS');
+        const intervals = this.configService.get('EXPIRATION_NOTIFICATIONS');
+
+        if (!intervals) {
+            return;
+        }
+
         const now = dayjs().utc();
 
         try {
@@ -92,8 +96,6 @@ export class SerialUsersOperationsQueueProcessor extends WorkerHost {
                     );
 
                     skipTelegramNotification = true;
-                } else {
-                    skipTelegramNotification = false;
                 }
 
                 await this.usersQueuesService.fireUserEventBulk({
@@ -174,7 +176,7 @@ export class SerialUsersOperationsQueueProcessor extends WorkerHost {
         >(new BulkDeleteByStatusCommand(status, limit));
     }
 
-    private async handleBulkUpdateAllUsersJob(job: Job<{ dto: BulkAllUpdateUsersRequestDto }>) {
+    private async handleBulkUpdateAllUsersJob(job: Job<{ dto: BulkAllUpdateUsersBodyDto }>) {
         try {
             const { dto } = job.data;
 

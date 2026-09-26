@@ -1,12 +1,12 @@
+import { TransactionHost } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { sql } from 'kysely';
 
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { TransactionHost } from '@nestjs-cls/transactional';
 import { Injectable } from '@nestjs/common';
 
-import { ICrudWithId } from '@common/types/crud-port';
 import { TxKyselyService } from '@common/database';
 import { paginateQuery } from '@common/helpers';
+import { ICrudWithId } from '@common/types/crud-port';
 import { GetSubscriptionRequestHistoryCommand } from '@libs/contracts/commands';
 
 import { UserSubscriptionRequestHistoryEntity } from '../entities/user-subscription-request-history.entity';
@@ -18,6 +18,8 @@ const SUB_HISTORY_FILTER_COLUMN_MAP = {
     requestAt: sql.ref('user_subscription_request_history.request_at'),
     requestIp: sql.ref('user_subscription_request_history.request_ip'),
     userAgent: sql.ref('user_subscription_request_history.user_agent'),
+    srrRuleName: sql.ref('user_subscription_request_history.srr_rule_name'),
+    srrResponseType: sql.ref('user_subscription_request_history.srr_response_type'),
 } as const;
 
 type AllowedSubHistoryFilterId = keyof typeof SUB_HISTORY_FILTER_COLUMN_MAP;

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { MIHOMO_IP_VERSION, SUBSCRIPTION_TEMPLATE_TYPE } from '../constants';
+import { HostMapperSchema } from './host-mapper';
 
 export const VlessProtocolOptionsSchema = z.object({
     encryption: z.string(),
@@ -16,7 +17,7 @@ export const ShadowsocksProtocolOptionsSchema = z.object({
     method: z.string(),
     password: z.string(),
     uot: z.boolean(),
-    uotVersion: z.number().int(),
+    uotVersion: z.int(),
 });
 
 const TcpHeaderNoneSchema = z.object({
@@ -27,14 +28,14 @@ const TcpHeaderHttpRequestSchema = z.object({
     version: z.string().optional(),
     method: z.string().optional(),
     path: z.array(z.string()).optional(),
-    headers: z.record(z.unknown()).optional(),
+    headers: z.record(z.string(), z.unknown()).optional(),
 });
 
 const TcpHeaderHttpResponseSchema = z.object({
     version: z.string().optional(),
     status: z.string().optional(),
     reason: z.string().optional(),
-    headers: z.record(z.unknown()).optional(),
+    headers: z.record(z.string(), z.unknown()).optional(),
 });
 
 const TcpHeaderHttpSchema = z.object({
@@ -53,20 +54,20 @@ export const XhttpTransportOptionsSchema = z.object({
     path: z.string().nullable(),
     host: z.string().nullable(),
     mode: z.enum(['auto', 'packet-up', 'stream-up', 'stream-one']),
-    extra: z.record(z.unknown()).nullable(),
+    extra: z.record(z.string(), z.unknown()).nullable(),
 });
 
 export const WsTransportOptionsSchema = z.object({
     path: z.string().nullable(),
     host: z.string().nullable(),
-    headers: z.record(z.string()).nullable(),
+    headers: z.record(z.string(), z.string()).nullable(),
     heartbeatPeriod: z.number().nullable(),
 });
 
 export const HttpUpgradeTransportOptionsSchema = z.object({
     path: z.string().nullable(),
     host: z.string().nullable(),
-    headers: z.record(z.string()).nullable(),
+    headers: z.record(z.string(), z.string()).nullable(),
 });
 
 export const GrpcTransportOptionsSchema = z.object({
@@ -76,20 +77,20 @@ export const GrpcTransportOptionsSchema = z.object({
 });
 
 export const KcpTransportOptionsSchema = z.object({
-    clientMtu: z.number().int(),
-    clientTti: z.number().int(),
+    clientMtu: z.int(),
+    clientTti: z.int(),
     congestion: z.boolean(),
 });
 
 export const HysteriaProtocolOptionsSchema = z.object({
-    version: z.number().int(),
+    version: z.int(),
 });
 
 export const FedarishaTuningOptionsSchema = z.object({
-    idleTimeoutSec: z.number().int().nullable(),
-    pollIntervalMs: z.number().int().nullable(),
-    writeIntervalMs: z.number().int().nullable(),
-    maxFileSizeBytes: z.number().int().nullable(),
+    idleTimeoutSec: z.int().nullable(),
+    pollIntervalMs: z.int().nullable(),
+    writeIntervalMs: z.int().nullable(),
+    maxFileSizeBytes: z.int().nullable(),
 });
 
 export const FedarishaProtocolOptionsSchema = z.object({
@@ -107,7 +108,7 @@ export const FedarishaProtocolOptionsSchema = z.object({
 });
 
 export const HysteriaTransportOptionsSchema = z.object({
-    version: z.number().int(),
+    version: z.int(),
     auth: z.string(),
 });
 
@@ -120,6 +121,8 @@ export const TlsSecurityOptionsSchema = z.object({
     serverName: z.string().nullable(),
     echConfigList: z.string().nullable(),
     echForceQuery: z.string().nullable(),
+    echSockopt: z.nullable(z.unknown()),
+    cipherSuites: z.string().nullable(),
 });
 
 export const RealitySecurityOptionsSchema = z.object({
@@ -157,11 +160,11 @@ const FedarishaProtocolSchema = z.object({
 });
 
 export const ProtocolVariantSchema = z.discriminatedUnion('protocol', [
-    VlessProtocolSchema,
-    TrojanProtocolSchema,
-    ShadowsocksProtocolSchema,
-    HysteriaProtocolSchema,
-    FedarishaProtocolSchema,
+    VlessProtocolSchema.meta({ title: 'vless' }),
+    TrojanProtocolSchema.meta({ title: 'trojan' }),
+    ShadowsocksProtocolSchema.meta({ title: 'shadowsocks' }),
+    HysteriaProtocolSchema.meta({ title: 'hysteria' }),
+    FedarishaProtocolSchema.meta({ title: 'fedarisha' }),
 ]);
 
 const TcpTransportSchema = z.object({
@@ -200,13 +203,13 @@ const HysteriaTransportSchema = z.object({
 });
 
 export const TransportVariantSchema = z.discriminatedUnion('transport', [
-    TcpTransportSchema,
-    XHttpTransportSchema,
-    WsTransportSchema,
-    HttpUpgradeTransportSchema,
-    GrpcTransportSchema,
-    KcpTransportSchema,
-    HysteriaTransportSchema,
+    TcpTransportSchema.meta({ title: 'tcp' }),
+    XHttpTransportSchema.meta({ title: 'xhttp' }),
+    WsTransportSchema.meta({ title: 'ws' }),
+    HttpUpgradeTransportSchema.meta({ title: 'httpupgrade' }),
+    GrpcTransportSchema.meta({ title: 'grpc' }),
+    KcpTransportSchema.meta({ title: 'kcp' }),
+    HysteriaTransportSchema.meta({ title: 'hysteria' }),
 ]);
 
 const TlsSecuritySchema = z.object({
@@ -224,53 +227,30 @@ const NoneSecuritySchema = z.object({
 });
 
 export const SecurityVariantSchema = z.discriminatedUnion('security', [
-    TlsSecuritySchema,
-    RealitySecuritySchema,
-    NoneSecuritySchema,
+    TlsSecuritySchema.meta({ title: 'tls' }),
+    RealitySecuritySchema.meta({ title: 'reality' }),
+    NoneSecuritySchema.meta({ title: 'none' }),
 ]);
 
 export const ProxyEntryMetadataSchema = z.object({
-    uuid: z.string().uuid(),
+    uuid: z.uuid(),
     tags: z.array(z.string()),
-    excludeFromSubscriptionTypes: z.array(z.nativeEnum(SUBSCRIPTION_TEMPLATE_TYPE)),
+    excludeFromSubscriptionTypes: z.array(z.enum(SUBSCRIPTION_TEMPLATE_TYPE)),
     inboundTag: z.string(),
-    configProfileUuid: z.string().uuid().nullable(),
-    configProfileInboundUuid: z.string().uuid().nullable(),
+    configProfileUuid: z.uuid().nullable(),
+    configProfileInboundUuid: z.uuid().nullable(),
     isDisabled: z.boolean(),
     isHidden: z.boolean(),
-    viewPosition: z.number().int(),
+    viewPosition: z.int(),
     remark: z.string(),
-    vlessRouteId: z.number().int().nullable(),
+    vlessRouteId: z.int().nullable(),
     rawInbound: z.nullable(z.unknown()),
 });
 
-export const ResolvedProxyConfigSchema = z.object({
+export const ResolvedProxyConfigBaseSchema = z.object({
     finalRemark: z.string(),
     address: z.string(),
-    port: z.number().int().positive(),
-
-    protocol: z.enum(['vless', 'trojan', 'shadowsocks', 'hysteria', 'fedarisha']),
-    protocolOptions: z.union([
-        VlessProtocolOptionsSchema,
-        TrojanProtocolOptionsSchema,
-        ShadowsocksProtocolOptionsSchema,
-        HysteriaProtocolOptionsSchema,
-        FedarishaProtocolOptionsSchema,
-    ]),
-
-    transport: z.enum(['tcp', 'xhttp', 'ws', 'httpupgrade', 'grpc', 'kcp', 'hysteria']),
-    transportOptions: z.union([
-        TcpTransportOptionsSchema,
-        XhttpTransportOptionsSchema,
-        WsTransportOptionsSchema,
-        HttpUpgradeTransportOptionsSchema,
-        GrpcTransportOptionsSchema,
-        KcpTransportOptionsSchema,
-        HysteriaTransportOptionsSchema,
-    ]),
-
-    security: z.enum(['tls', 'reality', 'none']),
-    securityOptions: z.union([TlsSecurityOptionsSchema, RealitySecurityOptionsSchema]).optional(),
+    port: z.int().positive(),
 
     streamOverrides: z.object({
         finalMask: z.nullable(z.unknown()),
@@ -282,10 +262,15 @@ export const ResolvedProxyConfigSchema = z.object({
     clientOverrides: z.object({
         shuffleHost: z.boolean(),
         mihomoX25519: z.boolean(),
-        mihomoIpVersion: z.nativeEnum(MIHOMO_IP_VERSION).nullable(),
+        mihomoIpVersion: z.enum(MIHOMO_IP_VERSION).nullable(),
         serverDescription: z.string().nullable(),
         xrayJsonTemplate: z.nullable(z.unknown()),
+        mapper: HostMapperSchema,
     }),
 
     metadata: ProxyEntryMetadataSchema,
 });
+
+export const ResolvedProxyConfigSchema = ResolvedProxyConfigBaseSchema.and(ProtocolVariantSchema)
+    .and(TransportVariantSchema)
+    .and(SecurityVariantSchema);

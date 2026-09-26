@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { HOSTS_ROUTES, REST_API } from '../../api';
 import {
     getEndpointDetails,
     SECURITY_LAYERS,
@@ -7,8 +8,8 @@ import {
     SUBSCRIPTION_TEMPLATE_TYPE,
     MIHOMO_IP_VERSION,
 } from '../../constants';
-import { HOSTS_ROUTES, REST_API } from '../../api';
-import { HostsSchema } from '../../models';
+import { HostInternalSquadsSchema, HostMapperSchema } from '../../models';
+import { HostResponseSchema } from './host.response';
 
 export namespace CreateHostCommand {
     export const url = REST_API.HOSTS.CREATE;
@@ -18,49 +19,30 @@ export namespace CreateHostCommand {
         HOSTS_ROUTES.CREATE,
         'post',
         'Create a new host',
+        { scope: 'create', kind: 'write' },
     );
 
-    export const RequestSchema = z.object({
+    export const RequestBodySchema = z.object({
         inbound: z.object({
-            configProfileUuid: z.string().uuid(),
-            configProfileInboundUuid: z.string().uuid(),
+            configProfileUuid: z.uuid(),
+            configProfileInboundUuid: z.uuid(),
         }),
-        remark: z
-            .string({
-                invalid_type_error: 'Remark must be a string',
-            })
-            .min(1, {
-                message: 'Remark must be at least 1 character',
-            })
-            .max(40, {
-                message: 'Remark must be less than 40 characters',
-            }),
+        remark: z.string().min(1).max(100),
 
-        address: z.string({
-            invalid_type_error: 'Address must be a string',
-        }),
-        port: z
-            .number({
-                invalid_type_error: 'Port must be an integer',
-            })
-            .int(),
+        address: z.string(),
+        port: z.int(),
         path: z.string().nullish(),
         sni: z.string().nullish(),
         host: z.string().nullish(),
-        alpn: z.nativeEnum(ALPN).nullish(),
+        alpn: z.enum(ALPN).nullish(),
         fingerprint: z.string().nullish(),
         isDisabled: z.optional(z.boolean().default(false)),
-        securityLayer: z.optional(z.nativeEnum(SECURITY_LAYERS).default(SECURITY_LAYERS.DEFAULT)),
-        xHttpExtraParams: z.unknown().nullish(),
+        securityLayer: z.optional(z.enum(SECURITY_LAYERS).default(SECURITY_LAYERS.DEFAULT)),
+        xhttpExtraParams: z.unknown().nullish(),
         muxParams: z.unknown().nullish(),
         sockoptParams: z.unknown().nullish(),
         finalMask: z.unknown().nullish(),
-        serverDescription: z
-            .string()
-            .max(30, {
-                message: 'Server description must be less than 30 characters',
-            })
-            .nullish(),
+        serverDescription: z.string().max(30).nullish(),
 
         tags: z.optional(
             z
@@ -80,25 +62,21 @@ export namespace CreateHostCommand {
         keepSniBlank: z.optional(z.boolean().default(false)),
         pinnedPeerCertSha256: z.string().nullish(),
         verifyPeerCertByName: z.string().nullish(),
-        vlessRouteId: z.number().int().min(0).max(65535).nullish(),
+        vlessRouteId: z.int().min(0).max(65535).nullish(),
         shuffleHost: z.optional(z.boolean().default(false)),
         mihomoX25519: z.optional(z.boolean().default(false)),
-        mihomoIpVersion: z.nativeEnum(MIHOMO_IP_VERSION).nullish(),
-        nodes: z.optional(z.array(z.string().uuid())),
-        xrayJsonTemplateUuid: z.string().uuid().nullish(),
-        excludedInternalSquads: z
-            .optional(z.array(z.string().uuid()))
-            .describe('Optional. Internal squads from which the host will be excluded.'),
+        mihomoIpVersion: z.enum(MIHOMO_IP_VERSION).nullish(),
+        nodes: z.optional(z.array(z.uuid())),
+        xrayJsonTemplateUuid: z.uuid().nullish(),
         excludeFromSubscriptionTypes: z
-            .optional(z.array(z.nativeEnum(SUBSCRIPTION_TEMPLATE_TYPE)))
+            .optional(z.array(z.enum(SUBSCRIPTION_TEMPLATE_TYPE)))
             .describe('Optional. Subscription types from which the host will be excluded from.'),
+        mapper: HostMapperSchema.optional(),
+        internalSquads: HostInternalSquadsSchema.optional(),
     });
 
-    export type Request = z.infer<typeof RequestSchema>;
+    export const ResponseSchema = HostResponseSchema;
 
-    export const ResponseSchema = z.object({
-        response: HostsSchema,
-    });
-
+    export type RequestBody = z.infer<typeof RequestBodySchema>;
     export type Response = z.infer<typeof ResponseSchema>;
 }

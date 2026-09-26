@@ -1,22 +1,28 @@
-import { jsonArrayFrom } from 'kysely/helpers/postgres';
-import { ExpressionBuilder, sql } from 'kysely';
+import { TransactionHost } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { Prisma } from '@prisma/client';
-
+import { ExpressionBuilder, sql } from 'kysely';
+import { jsonArrayFrom } from 'kysely/helpers/postgres';
 import { DB } from 'prisma/generated/types';
 
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
-import { TransactionHost } from '@nestjs-cls/transactional';
 import { Injectable } from '@nestjs/common';
 
-import { values } from '@common/helpers/kysely/values';
 import { TxKyselyService } from '@common/database';
 import { getKyselyUuid } from '@common/helpers';
+import { values } from '@common/helpers/kysely/values';
 
-import { ConfigProfileWithInboundsAndNodesEntity } from '../entities/config-profile-with-inbounds-and-nodes.entity';
-import { ConfigProfileInboundEntity } from '../entities/config-profile-inbound.entity';
 import { ConfigProfileConverter } from '../converters/config-profile.converter';
-import { ConfigProfileEntity } from '../entities/config-profile.entity';
 import { ConfigProfileInboundWithSquadsEntity } from '../entities';
+import { ConfigProfileInboundEntity } from '../entities/config-profile-inbound.entity';
+import { ConfigProfileWithInboundsAndNodesEntity } from '../entities/config-profile-with-inbounds-and-nodes.entity';
+import { ConfigProfileEntity } from '../entities/config-profile.entity';
+
+const SNIPPET_USAGE_JSONPATH = `$ ? (
+    @.snippets[*] == $name
+    || @.outbounds[*].snippet == $name
+    || @.routing.rules[*].snippet == $name
+    || @.routing.balancers[*].snippet == $name
+)`;
 
 @Injectable()
 export class ConfigProfileRepository {
@@ -78,7 +84,9 @@ export class ConfigProfileRepository {
         return this.configProfileConverter.fromPrismaModelToEntity(result);
     }
 
-    public async findByCriteria(dto: Partial<ConfigProfileEntity>): Promise<ConfigProfileEntity[]> {
+    public async findByCriteria(
+        dto: Partial<Omit<ConfigProfileEntity, 'tags'>>,
+    ): Promise<ConfigProfileEntity[]> {
         const configProfileList = await this.prisma.tx.configProfiles.findMany({
             where: dto,
         });
@@ -86,7 +94,7 @@ export class ConfigProfileRepository {
     }
 
     public async findFirstByCriteria(
-        dto: Partial<ConfigProfileEntity>,
+        dto: Partial<Omit<ConfigProfileEntity, 'tags'>>,
     ): Promise<ConfigProfileEntity | null> {
         const result = await this.prisma.tx.configProfiles.findFirst({
             where: dto,
@@ -122,6 +130,23 @@ export class ConfigProfileRepository {
             .execute();
 
         return result.map((item) => new ConfigProfileWithInboundsAndNodesEntity(item));
+    }
+
+    public async getUuidsBySnippetName(name: string): Promise<string[]> {
+        const result = await this.qb.kysely
+            .selectFrom('configProfiles')
+            .select('configProfiles.uuid')
+            .where(
+                sql<boolean>`jsonb_path_exists(
+                    ${sql.ref('config_profiles.config')},
+                    ${SNIPPET_USAGE_JSONPATH}::jsonpath,
+                    jsonb_build_object('name', ${name}::text)
+                )`,
+            )
+            .orderBy('configProfiles.viewPosition', 'asc')
+            .execute();
+
+        return result.map((row) => row.uuid);
     }
 
     public async getConfigProfileByUUID(
@@ -271,7 +296,7 @@ export class ConfigProfileRepository {
         return true;
     }
 
-    /* 
+    /*
 
     Kysely helpers
 
@@ -294,5 +319,27 @@ export class ConfigProfileRepository {
                 .orderBy('nodes.viewPosition', 'asc')
                 .whereRef('nodes.activeConfigProfileUuid', '=', 'configProfiles.uuid'),
         ).as('nodes');
+    }
+
+    public async findAllTags(): Promise<string[]> {
+        const result = await this.qb.kysely
+            .selectFrom('configProfiles')
+            .select(sql<string>`unnest(tags)`.as('tag'))
+            .distinct()
+            .where('tags', 'is not', null)
+            .orderBy('tag')
+            .execute();
+
+        return result.map((value) => value.tag);
+    }
+
+    public async setTags(uuid: string, tags: string[]): Promise<string[]> {
+        const result = await this.prisma.tx.configProfiles.update({
+            where: { uuid },
+            data: { tags },
+            select: { tags: true },
+        });
+
+        return result.tags;
     }
 }

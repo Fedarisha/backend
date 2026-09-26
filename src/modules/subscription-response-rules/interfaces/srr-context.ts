@@ -11,6 +11,7 @@ export interface ISRRContext {
     isExtendedClient: boolean;
     supportsFedarisha: boolean;
     matchedResponseType: TResponseRulesResponseType;
+    matchedRuleName?: string;
     ip: string;
     subscriptionSettings: SubscriptionSettingsEntity;
     overrideTemplateName?: string;
@@ -19,4 +20,6 @@ export interface ISRRContext {
     ignoreServeJsonAtBaseSubscription?: boolean;
     disableHwidCheck?: boolean;
     encryption?: TResponseRuleEncryption;
+    excludeHostsByTags?: Set<string>;
+    respondWithRemarks?: string[];
 }

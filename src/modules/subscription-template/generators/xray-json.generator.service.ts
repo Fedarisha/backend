@@ -1,20 +1,20 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+import { isNonEmptyObject } from '@common/utils';
 import type {
     TRemnawaveInjectorSelectFrom,
     TRemnawaveInjectorSelector,
 } from '@libs/contracts/models';
 
-import { Injectable, Logger } from '@nestjs/common';
-
-import { isNonEmptyObject } from '@common/utils';
-
+import { applyHostMapper } from '../host-mapper';
+import { ResolvedProxyConfig } from '../resolve-proxy/interfaces';
+import { SubscriptionTemplateService } from '../subscription-template.service';
 import {
     IGenerateConfigParams,
     Outbound,
     StreamSettings,
     XrayJsonConfig,
 } from './interfaces/xray-json-config.interface';
-import { SubscriptionTemplateService } from '../subscription-template.service';
-import { ResolvedProxyConfig } from '../resolve-proxy/interfaces';
 
 type VlessConfig = Extract<ResolvedProxyConfig, { protocol: 'vless' }>;
 type TrojanConfig = Extract<ResolvedProxyConfig, { protocol: 'trojan' }>;
@@ -152,6 +152,7 @@ function buildTlsSettings(host: ResolvedProxyConfig): Record<string, unknown> {
     if (host.security !== 'tls') return {};
     const settings: Record<string, unknown> = {
         serverName: host.securityOptions.serverName || '',
+        enableSessionResumption: host.securityOptions.enableSessionResumption,
     };
 
     if (host.securityOptions.fingerprint !== '') {
@@ -176,6 +177,14 @@ function buildTlsSettings(host: ResolvedProxyConfig): Record<string, unknown> {
 
     if (host.securityOptions.echConfigList) {
         settings.echConfigList = host.securityOptions.echConfigList;
+    }
+
+    if (host.securityOptions.echSockopt) {
+        settings.echSockopt = host.securityOptions.echSockopt;
+    }
+
+    if (host.securityOptions.cipherSuites) {
+        settings.cipherSuites = host.securityOptions.cipherSuites;
     }
 
     return settings;
@@ -300,10 +309,14 @@ export class XrayJsonGeneratorService {
         }
 
         if (isNonEmptyObject(host.mux)) {
-            outbound.mux = host.mux;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { smux: _, ...mux } = host.mux;
+            if (Object.keys(mux).length > 0) {
+                outbound.mux = mux;
+            }
         }
 
-        return outbound;
+        return applyHostMapper(outbound, host.clientOverrides.mapper.xrayJson, host);
     }
 
     private buildTransportEntry(host: ResolvedProxyConfig): object {

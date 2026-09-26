@@ -5,7 +5,6 @@ import { InternalSquadEntity } from '@modules/internal-squads/entities';
 import { UserEntity } from '../entities';
 
 export class GetFullUserResponseModel {
-    public readonly uuid: string;
     public readonly id: number;
     public readonly shortUuid: string;
     public readonly username: string;
@@ -39,7 +38,7 @@ export class GetFullUserResponseModel {
     public readonly subscriptionUrl: string;
     public readonly activeInternalSquads: Omit<
         InternalSquadEntity,
-        'createdAt' | 'updatedAt' | 'viewPosition'
+        'createdAt' | 'tags' | 'updatedAt' | 'viewPosition'
     >[];
     public readonly userTraffic: {
         usedTrafficBytes: number;
@@ -50,8 +49,7 @@ export class GetFullUserResponseModel {
     };
 
     constructor(entity: UserEntity, subPublicDomain: string) {
-        this.id = Number(entity.tId);
-        this.uuid = entity.uuid;
+        this.id = Number(entity.id);
         this.shortUuid = entity.shortUuid;
         this.username = entity.username;
 

@@ -1,8 +1,9 @@
 // init: 0c6711a63dc2571a9b7a69a5ae00219be616ac47d38f4c6e02caff8b3c7315b4
-// next: 4761b7f5422b0e47df79e2208805f958472a680431f149ddfc1ad716d3f4d74d
+// prev: 8360aea32ccc607381501994bd15cee0557c0e7ae7db5153f385bde714496d24
+// next: 5551e5ceadbd8f900b78926049cb72ef63e9287f6f73d77a7c5237ccc4368f91
 
 export const PREV_SRR_CONFIG_HASH =
-    '0c6711a63dc2571a9b7a69a5ae00219be616ac47d38f4c6e02caff8b3c7315b4';
+    '8360aea32ccc607381501994bd15cee0557c0e7ae7db5153f385bde714496d24';
 
 export const SRR_DEFAULT_CONFIG = {
     version: '1',
@@ -31,7 +32,7 @@ export const SRR_DEFAULT_CONFIG = {
                 {
                     headerName: 'user-agent',
                     operator: 'REGEX',
-                    value: '^(?:FlClash|FlClashX|Flowvy|[Cc]lash-[Vv]erge|[Kk]oala-[Cc]lash|[Cc]lash-?[Mm]eta|[Mm]urge|[Cc]lashX [Mm]eta|[Mm]ihomo|[Cc]lash-nyanpasu|clash.meta|prizrak-box)',
+                    value: '^(?:flclash|rabbit|flowvy|murge|mihomo|prizrak-box|koala-clash|clash(?:-verge|-nyanpasu|x meta|[-.]?meta))',
                     caseSensitive: false,
                 },
             ],
@@ -54,7 +55,7 @@ export const SRR_DEFAULT_CONFIG = {
         },
         {
             name: 'Sing-box clients',
-            description: 'Resonse with generated JSON config (Singbox template)',
+            description: 'Response with generated JSON config (Singbox template)',
             enabled: true,
             operator: 'AND',
             conditions: [

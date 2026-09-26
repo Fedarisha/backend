@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [dev]
+    branches: [main]
   pull_request:
-    branches: [dev]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -21,4 +21,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run migrate:generate
+      - run: npm run generate:openapi
       - run: npm run build

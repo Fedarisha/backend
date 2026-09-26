@@ -1,23 +1,23 @@
 #!/usr/bin/env node
-
+import 'zod/compile';
 import 'reflect-metadata';
+import { PrismaClient } from '@prisma/client';
 import {
     generateHybridIdentity,
     generateX25519Identity,
     identityToRecipient,
 } from 'age-encryption';
+import consola from 'consola';
+import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { PrismaClient } from '@prisma/client';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
-import consola from 'consola';
 import Redis from 'ioredis';
-import dayjs from 'dayjs';
 
-import { encodeCertPayload } from '@common/utils/certs/encode-node-payload';
 import { getRedisConnectionOptions } from '@common/utils';
 import { generateNodeCert } from '@common/utils/certs';
+import { encodeCertPayload } from '@common/utils/certs/encode-node-payload';
 import { CACHE_KEYS } from '@libs/contracts/constants';
 
 import { TResponseRuleEncryption } from '@modules/subscription-response-rules/types/response-rules.types';
@@ -45,6 +45,7 @@ const redisOptions = getRedisConnectionOptions(
 const redis = new Redis({
     ...redisOptions,
     password: process.env.REDIS_PASSWORD,
+    username: process.env.REDIS_USERNAME,
     db: parseInt(process.env.REDIS_DB ?? '1'),
     keyPrefix: 'rmnwv:',
 });

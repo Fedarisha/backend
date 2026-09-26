@@ -1,43 +1,33 @@
-import allMeasures, {
-    AllMeasures,
-    AllMeasuresSystems,
-    AllMeasuresUnits,
-} from 'convert-units/definitions/all';
-import configureMeasurements, { Converter } from 'convert-units';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Gauge } from 'prom-client';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
 import { QueryBus } from '@nestjs/cqrs';
+import { Cron } from '@nestjs/schedule';
 
-import { resolveCountryEmoji } from '@common/utils/resolve-country-emoji';
-import { RuntimeMetric } from '@common/runtime-metrics/interfaces';
 import { RawCacheService } from '@common/raw-cache';
+import { RuntimeMetric } from '@common/runtime-metrics/interfaces';
 import { TResult } from '@common/types';
+import { resolveCountryEmoji } from '@common/utils/resolve-country-emoji';
 import { INTERNAL_CACHE_KEYS, METRIC_NAMES } from '@libs/contracts/constants';
 
-import { GetShortUserStatsQuery } from '@modules/users/queries/get-short-user-stats/get-short-user-stats.query';
+import { NodesEntity } from '@modules/nodes/entities/nodes.entity';
 import { GetAllNodesQuery } from '@modules/nodes/queries/get-all-nodes/get-all-nodes.query';
 import { GetNodesSystemStatsQuery } from '@modules/nodes/queries/get-nodes-system-stats';
 import { ShortUserStats } from '@modules/users/interfaces/user-stats.interface';
-import { NodesEntity } from '@modules/nodes/entities/nodes.entity';
+import { GetShortUserStatsQuery } from '@modules/users/queries/get-short-user-stats/get-short-user-stats.query';
 
+import { JOBS_INTERVALS } from '@scheduler/intervals';
 import {
     INodeBaseMetricLabels,
     INodeMetricLabel,
     INodeSystemMetricLabels,
 } from '@scheduler/metrics-providers';
-import { JOBS_INTERVALS } from '@scheduler/intervals';
 
 @Injectable()
 export class ExportMetricsTask {
     private static readonly CRON_NAME = 'exportMetrics';
     private readonly logger = new Logger(ExportMetricsTask.name);
-
-    private convert: (
-        value?: number | undefined,
-    ) => Converter<AllMeasures, AllMeasuresSystems, AllMeasuresUnits, number>;
 
     private cachedUserStats: ShortUserStats | null;
     private lastUserStatsUpdateTime: number;
@@ -104,7 +94,6 @@ export class ExportMetricsTask {
         this.lastUserStatsUpdateTime = 0;
         this.CACHE_TTL_MS = 60000;
         this.cachedUserStats = null;
-        this.convert = configureMeasurements(allMeasures);
     }
 
     @Cron(JOBS_INTERVALS.METRIC_EXPORT_METRICS, {

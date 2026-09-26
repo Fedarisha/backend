@@ -1,9 +1,11 @@
 import {
     TAlpnValues,
+    TInternalSquadsMode,
     TMihomoIpVersion,
     TSecurityLayers,
     TSubscriptionTemplateType,
 } from '@libs/contracts/constants';
+import { THostMapper } from '@libs/contracts/models';
 
 import { HostsEntity } from '../entities/hosts.entity';
 
@@ -21,7 +23,7 @@ export class HostResponseModel {
     public fingerprint: null | string;
     public isDisabled: boolean;
     public securityLayer: TSecurityLayers;
-    public xHttpExtraParams: null | object;
+    public xhttpExtraParams: null | object;
     public muxParams: null | object;
     public sockoptParams: null | object;
     public finalMask: null | object;
@@ -48,8 +50,12 @@ export class HostResponseModel {
 
     public xrayJsonTemplateUuid: string | null;
 
-    public excludedInternalSquads: string[];
     public excludeFromSubscriptionTypes: TSubscriptionTemplateType[];
+    public mapper: THostMapper;
+    public internalSquads: {
+        mode: TInternalSquadsMode;
+        squads: string[];
+    };
 
     constructor(data: HostsEntity) {
         this.uuid = data.uuid;
@@ -66,7 +72,7 @@ export class HostResponseModel {
 
         this.isDisabled = data.isDisabled;
         this.securityLayer = data.securityLayer;
-        this.xHttpExtraParams = data.xHttpExtraParams;
+        this.xhttpExtraParams = data.xhttpExtraParams;
         this.muxParams = data.muxParams;
         this.sockoptParams = data.sockoptParams;
         this.finalMask = data.finalMask;
@@ -89,11 +95,13 @@ export class HostResponseModel {
         };
 
         this.nodes = data.nodes.map((node) => node.nodeUuid);
-        this.excludedInternalSquads = data.excludedInternalSquads.map(
-            (exclusion) => exclusion.squadUuid,
-        );
+        this.internalSquads = {
+            mode: data.internalSquadsMode,
+            squads: data.internalSquads.map((squad) => squad.squadUuid),
+        };
 
         this.xrayJsonTemplateUuid = data.xrayJsonTemplateUuid;
         this.excludeFromSubscriptionTypes = data.excludeFromSubscriptionTypes;
+        this.mapper = data.mapper;
     }
 }

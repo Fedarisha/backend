@@ -25,7 +25,7 @@ const entityToModel = (entity: HostsEntity): Hosts => {
         fingerprint: entity.fingerprint,
         securityLayer: entity.securityLayer,
         isDisabled: entity.isDisabled,
-        xHttpExtraParams: entity.xHttpExtraParams,
+        xhttpExtraParams: entity.xhttpExtraParams,
         muxParams: entity.muxParams,
         sockoptParams: entity.sockoptParams,
         finalMask: entity.finalMask,
@@ -47,6 +47,9 @@ const entityToModel = (entity: HostsEntity): Hosts => {
 
         xrayJsonTemplateUuid: entity.xrayJsonTemplateUuid,
         excludeFromSubscriptionTypes: entity.excludeFromSubscriptionTypes,
+        mapper: entity.mapper,
+
+        internalSquadsMode: entity.internalSquadsMode,
     };
 };
 

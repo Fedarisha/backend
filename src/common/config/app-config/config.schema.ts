@@ -1,6 +1,17 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
+import { compileShortUuidPattern } from '@common/utils/short-uuid';
+
+const booleanString = (def: 'true' | 'false' = 'false') =>
+    z
+        .string()
+        .default(def)
+        .transform((val) => (val === '' ? def : val))
+        .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".')
+        .transform((val) => val === 'true')
+        .pipe(z.boolean());
+
 export const configSchema = z
     .object({
         __RW_METADATA_VERSION: z.string().default('1.1.1'),
@@ -23,25 +34,14 @@ export const configSchema = z
             .string()
             .default('3001')
             .transform((port) => parseInt(port, 10)),
-        JWT_AUTH_SECRET: z
+        APP_SECRET: z
             .string()
-            .refine((val) => val !== 'change_me', 'JWT_AUTH_SECRET cannot be set to "change_me"'),
+            .refine((val) => val !== 'change_me', 'APP_SECRET cannot be set to "change_me"'),
         JWT_AUTH_LIFETIME: z
             .string()
             .default('12')
             .transform((val) => parseInt(val, 10)),
-        JWT_API_TOKENS_SECRET: z
-            .string()
-            .refine(
-                (val) => val !== 'change_me',
-                'JWT_API_TOKENS_SECRET cannot be set to "change_me"',
-            ),
-
-        IS_TELEGRAM_NOTIFICATIONS_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
+        IS_TELEGRAM_NOTIFICATIONS_ENABLED: booleanString('false'),
         TELEGRAM_BOT_TOKEN: z.string().optional(),
         TELEGRAM_BOT_API_ROOT: z.string().default('https://api.telegram.org'),
         TELEGRAM_BOT_PROXY: z
@@ -59,21 +59,10 @@ export const configSchema = z
 
         FRONT_END_DOMAIN: z.string(),
         PANEL_DOMAIN: z.string().optional(),
-        IS_DOCS_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
-        SCALAR_PATH: z.string().default('/scalar'),
-        SWAGGER_PATH: z.string().default('/docs'),
-        METRICS_USER: z.string().min(1, { message: 'METRICS_USER cannot be empty' }),
-        METRICS_PASS: z.string().min(1, { message: 'METRICS_PASS cannot be empty' }),
+        METRICS_USER: z.string().min(1),
+        METRICS_PASS: z.string().min(1),
         SUB_PUBLIC_DOMAIN: z.string(),
-        WEBHOOK_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
+        WEBHOOK_ENABLED: booleanString('false'),
         WEBHOOK_URL: z.string().optional(),
         WEBHOOK_SECRET_HEADER: z.string().optional(),
         REDIS_HOST: z.string().optional(),
@@ -86,57 +75,36 @@ export const configSchema = z
                 'Port must be between 1 and 65535',
             ),
         REDIS_SOCKET: z.string().optional(),
+        REDIS_USERNAME: z.optional(z.string()),
         REDIS_PASSWORD: z.optional(z.string()),
         REDIS_DB: z
             .string()
             .transform((db) => parseInt(db, 10))
             .refine((db) => db >= 0 && db <= 15, 'Redis DB index must be between 0 and 15')
-            .default('1'),
+            .prefault('1'),
         SHORT_UUID_LENGTH: z
             .string()
             .default('16')
             .transform((val) => parseInt(val, 10))
             .refine((val) => val >= 16 && val <= 64, 'SHORT_UUID_LENGTH must be between 16 and 64'),
-        IS_HTTP_LOGGING_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
-        ENABLE_DEBUG_LOGS: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
+        SHORT_UUID_METHOD: z.enum(['nanoid', 'uuid', 'custom']).default('nanoid'),
+        SHORT_UUID_CUSTOM_PATTERN: z.optional(z.string()),
+        IS_HTTP_LOGGING_ENABLED: booleanString('false'),
+        ENABLE_DEBUG_LOGS: booleanString('false'),
         REMNAWAVE_BRANCH: z.string().default('dev'),
-
-        // COOKIE_AUTH_ENABLED: z
-        //     .string()
-        //     .default('false')
-        //     .transform((val) => val === 'true'),
-        // COOKIE_AUTH_NONCE: z.optional(z.string()),
-
-        SERVICE_CLEAN_USAGE_HISTORY: z
+        SERVICE_CLEAN_USAGE_HISTORY: booleanString('false'),
+        SERVICE_DISABLE_USER_USAGE_RECORDS: booleanString('false'),
+        SERVICE_DISABLE_SRH_RECORDS: booleanString('false'),
+        EXPORT_TO_STREAM_ENABLED: booleanString('false'),
+        EXPORT_TO_STREAM_MAXLEN: z
             .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
-
-        SERVICE_DISABLE_USER_USAGE_RECORDS: z
-            .string()
-            .default('false')
-            .transform((val) => val === 'true' || val === '1')
-            .pipe(z.boolean()),
-        SERVICE_DISABLE_SRH_RECORDS: z
-            .string()
-            .default('false')
-            .transform((val) => val === 'true' || val === '1')
-            .pipe(z.boolean()),
-
-        BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
+            .default('3000')
+            .transform((val) => parseInt(val, 10))
+            .refine(
+                (val) => Number.isInteger(val) && val > 0,
+                'EXPORT_TO_STREAM_MAXLEN must be a positive integer',
+            ),
+        BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED: booleanString('false'),
         BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD: z
             .string()
             .optional()
@@ -152,11 +120,7 @@ export const configSchema = z
             })
             .pipe(z.array(z.number()).optional()),
 
-        NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
+        NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED: booleanString('false'),
         NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS: z
             .string()
             .optional()
@@ -175,12 +139,8 @@ export const configSchema = z
             .string()
             .default('0')
             .transform((bytes) => BigInt(bytes))
-            .pipe(z.bigint().max(1_048_576n).default(0n)),
-        EXPIRATION_NOTIFICATIONS_ENABLED: z
-            .string()
-            .default('false')
-            .transform((val) => (val === '' ? 'false' : val))
-            .refine((val) => val === 'true' || val === 'false', 'Must be "true" or "false".'),
+            .pipe(z.bigint().max(1_048_576n)),
+        EXPIRATION_NOTIFICATIONS_ENABLED: booleanString('false'),
         EXPIRATION_NOTIFICATIONS: z
             .string()
             .optional()
@@ -196,25 +156,28 @@ export const configSchema = z
     })
     .superRefine((data, ctx) => {
         if (!data.REDIS_SOCKET && (!data.REDIS_HOST || !data.REDIS_PORT)) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+            ctx.issues.push({
+                input: data,
+                code: 'custom',
                 message: 'Either REDIS_SOCKET or both REDIS_HOST and REDIS_PORT must be provided',
                 path: ['REDIS_HOST'],
             });
         }
 
         if (data.REDIS_SOCKET && data.REDIS_HOST && data.REDIS_PORT) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+            ctx.issues.push({
+                input: data,
+                code: 'custom',
                 message: 'REDIS_SOCKET, REDIS_HOST and REDIS_PORT cannot be provided together',
                 path: ['REDIS_SOCKET'],
             });
         }
 
-        if (data.WEBHOOK_ENABLED === 'true') {
+        if (data.WEBHOOK_ENABLED) {
             if (!data.WEBHOOK_URL) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message: 'WEBHOOK_URL is required when WEBHOOK_ENABLED is true',
                     path: ['WEBHOOK_URL'],
                 });
@@ -222,30 +185,34 @@ export const configSchema = z
                 !data.WEBHOOK_URL.startsWith('http://') &&
                 !data.WEBHOOK_URL.startsWith('https://')
             ) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message: 'WEBHOOK_URL must start with http:// or https://',
                     path: ['WEBHOOK_URL'],
                 });
             }
 
             if (!data.WEBHOOK_SECRET_HEADER) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message: 'WEBHOOK_SECRET_HEADER is required when WEBHOOK_ENABLED is true',
                     path: ['WEBHOOK_SECRET_HEADER'],
                 });
             } else {
                 if (data.WEBHOOK_SECRET_HEADER.length < 32) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message: 'WEBHOOK_SECRET_HEADER must be at least 32 characters long',
                         path: ['WEBHOOK_SECRET_HEADER'],
                     });
                 }
                 if (!/^[a-zA-Z0-9]+$/.test(data.WEBHOOK_SECRET_HEADER)) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message: 'WEBHOOK_SECRET_HEADER must contain only letters and numbers',
                         path: ['WEBHOOK_SECRET_HEADER'],
                     });
@@ -260,8 +227,9 @@ export const configSchema = z
                             !webhookUrl.startsWith('http://') &&
                             !webhookUrl.startsWith('https://')
                         ) {
-                            ctx.addIssue({
-                                code: z.ZodIssueCode.custom,
+                            ctx.issues.push({
+                                input: data,
+                                code: 'custom',
                                 message: 'WEBHOOK_URL must start with http:// or https://',
                                 path: ['WEBHOOK_URL'],
                             });
@@ -271,10 +239,11 @@ export const configSchema = z
             }
         }
 
-        if (data.IS_TELEGRAM_NOTIFICATIONS_ENABLED === 'true') {
+        if (data.IS_TELEGRAM_NOTIFICATIONS_ENABLED) {
             if (!data.TELEGRAM_BOT_TOKEN) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message:
                         'TELEGRAM_BOT_TOKEN is required when IS_TELEGRAM_NOTIFICATIONS_ENABLED is true',
                     path: ['TELEGRAM_BOT_TOKEN'],
@@ -282,24 +251,27 @@ export const configSchema = z
             }
         }
 
-        if (data.BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED === 'true') {
+        if (data.BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED) {
             if (!data.BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message:
                         'BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD is required when BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED is true',
                     path: ['BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD'],
                 });
             } else if (data.BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD.length === 0) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message: 'BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD must not be empty',
                     path: ['BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD'],
                 });
             } else {
                 if (data.BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD.length > 5) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message:
                             'BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD must contain at most 5 values',
                         path: ['BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD'],
@@ -311,8 +283,9 @@ export const configSchema = z
                         (t) => isNaN(t) || !Number.isInteger(t) || t < 25 || t > 95,
                     )
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message: 'All threshold values must be integers between 25 and 95',
                         path: ['BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD'],
                     });
@@ -323,8 +296,9 @@ export const configSchema = z
                         (value, index, array) => index === 0 || value > array[index - 1],
                     )
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message: 'Threshold values must be in strictly ascending order',
                         path: ['BANDWIDTH_USAGE_NOTIFICATIONS_THRESHOLD'],
                     });
@@ -332,24 +306,27 @@ export const configSchema = z
             }
         }
 
-        if (data.NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED === 'true') {
+        if (data.NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED) {
             if (!data.NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message:
                         'NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS is required when NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED is true',
                     path: ['NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS'],
                 });
             } else if (data.NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS.length === 0) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message: 'NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS must not be empty',
                     path: ['NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS'],
                 });
             } else {
                 if (data.NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS.length > 3) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message:
                             'NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS must contain at most 3 values',
                         path: ['NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS'],
@@ -358,12 +335,13 @@ export const configSchema = z
 
                 if (
                     data.NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS.some(
-                        (t) => isNaN(t) || !Number.isInteger(t) || t < 1 || t > 168,
+                        (t) => isNaN(t) || !Number.isInteger(t) || t < 1 || t > 744,
                     )
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        message: 'All hours values must be integers between 1 and 168',
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
+                        message: 'All hours values must be integers between 1 and 744',
                         path: ['NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS'],
                     });
                 }
@@ -373,8 +351,9 @@ export const configSchema = z
                         (value, index, array) => index === 0 || value > array[index - 1],
                     )
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message: 'Hours values must be in strictly ascending order',
                         path: ['NOT_CONNECTED_USERS_NOTIFICATIONS_AFTER_HOURS'],
                     });
@@ -382,37 +361,41 @@ export const configSchema = z
             }
         }
 
-        if (data.EXPIRATION_NOTIFICATIONS_ENABLED === 'true') {
+        if (data.EXPIRATION_NOTIFICATIONS_ENABLED) {
             if (!data.EXPIRATION_NOTIFICATIONS) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message:
                         'EXPIRATION_NOTIFICATIONS is required when EXPIRATION_NOTIFICATIONS_ENABLED is true',
                     path: ['EXPIRATION_NOTIFICATIONS'],
                 });
             } else if (data.EXPIRATION_NOTIFICATIONS.length === 0) {
-                ctx.addIssue({
-                    code: z.ZodIssueCode.custom,
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
                     message: 'EXPIRATION_NOTIFICATIONS must not be empty',
                     path: ['EXPIRATION_NOTIFICATIONS'],
                 });
             } else {
                 if (
                     data.EXPIRATION_NOTIFICATIONS.some(
-                        (t) => isNaN(t) || !Number.isInteger(t) || t === 0 || t < -168 || t > 168,
+                        (t) => isNaN(t) || !Number.isInteger(t) || t === 0 || t < -744 || t > 744,
                     )
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message:
-                            'All expiration values must be non-zero integers between -168 and 168',
+                            'All expiration values must be non-zero integers between -744 and 744',
                         path: ['EXPIRATION_NOTIFICATIONS'],
                     });
                 }
 
                 if (data.EXPIRATION_NOTIFICATIONS.filter((t) => t < 0).length > 5) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message:
                             'EXPIRATION_NOTIFICATIONS must contain at most 5 negative values (before expiration)',
                         path: ['EXPIRATION_NOTIFICATIONS'],
@@ -420,8 +403,9 @@ export const configSchema = z
                 }
 
                 if (data.EXPIRATION_NOTIFICATIONS.filter((t) => t > 0).length > 5) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message:
                             'EXPIRATION_NOTIFICATIONS must contain at most 5 positive values (after expiration)',
                         path: ['EXPIRATION_NOTIFICATIONS'],
@@ -432,8 +416,9 @@ export const configSchema = z
                     new Set(data.EXPIRATION_NOTIFICATIONS).size !==
                     data.EXPIRATION_NOTIFICATIONS.length
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message: 'EXPIRATION_NOTIFICATIONS must not contain duplicate values',
                         path: ['EXPIRATION_NOTIFICATIONS'],
                     });
@@ -444,8 +429,9 @@ export const configSchema = z
                         (value, index, array) => index === 0 || value > array[index - 1],
                     )
                 ) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
                         message:
                             'EXPIRATION_NOTIFICATIONS values must be in strictly ascending order',
                         path: ['EXPIRATION_NOTIFICATIONS'],
@@ -455,16 +441,41 @@ export const configSchema = z
         }
 
         if (data.JWT_AUTH_LIFETIME > 168 || data.JWT_AUTH_LIFETIME < 12) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+            ctx.issues.push({
+                input: data,
+                code: 'custom',
                 message: 'JWT_AUTH_LIFETIME must be between 12 and 168 hours.',
                 path: ['JWT_AUTH_LIFETIME'],
             });
         }
 
+        if (data.SHORT_UUID_METHOD === 'custom') {
+            if (!data.SHORT_UUID_CUSTOM_PATTERN) {
+                ctx.issues.push({
+                    input: data,
+                    code: 'custom',
+                    message:
+                        'SHORT_UUID_CUSTOM_PATTERN is required when SHORT_UUID_METHOD is "custom"',
+                    path: ['SHORT_UUID_CUSTOM_PATTERN'],
+                });
+            } else {
+                try {
+                    compileShortUuidPattern(data.SHORT_UUID_CUSTOM_PATTERN);
+                } catch (error) {
+                    ctx.issues.push({
+                        input: data,
+                        code: 'custom',
+                        message: `Invalid SHORT_UUID_CUSTOM_PATTERN: ${(error as Error).message}`,
+                        path: ['SHORT_UUID_CUSTOM_PATTERN'],
+                    });
+                }
+            }
+        }
+
         if (data.REMNAWAVE_BRANCH !== 'dev' && data.REMNAWAVE_BRANCH !== 'main') {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
+            ctx.issues.push({
+                input: data,
+                code: 'custom',
                 message: 'REMNAWAVE_BRANCH is modified in the Dockerfile. Please do not change it.',
                 path: ['REMNAWAVE_BRANCH'],
             });

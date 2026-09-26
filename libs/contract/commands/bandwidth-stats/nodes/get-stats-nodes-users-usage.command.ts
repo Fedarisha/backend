@@ -11,21 +11,18 @@ export namespace GetStatsNodesUsersUsageCommand {
         BANDWIDTH_STATS_ROUTES.NODES.GET_USERS_BY_NODES,
         'post',
         'Get Nodes Users Usage by Nodes UUIDs',
+        { scope: 'nodes-users-usage', kind: 'read' },
     );
 
+    export const RequestBodySchema = z.object({
+        nodesUuids: z.array(z.uuid()).min(1),
+    });
+
     export const RequestQuerySchema = z.object({
-        start: z.string().date(),
-        end: z.string().date(),
+        start: z.iso.date().describe('Start date (YYYY-MM-DD)'),
+        end: z.iso.date().describe('End date (YYYY-MM-DD)'),
         topUsersLimit: z.coerce.number().min(1).default(100),
     });
-
-    export type RequestQuery = z.infer<typeof RequestQuerySchema>;
-
-    export const RequestSchema = z.object({
-        nodesUuids: z.array(z.string().uuid()).min(1, 'Must be at least 1 node UUID'),
-    });
-
-    export type Request = z.infer<typeof RequestSchema>;
 
     export const ResponseSchema = z.object({
         response: z.object({
@@ -41,5 +38,7 @@ export namespace GetStatsNodesUsersUsageCommand {
         }),
     });
 
+    export type RequestBody = z.infer<typeof RequestBodySchema>;
+    export type RequestQuery = z.infer<typeof RequestQuerySchema>;
     export type Response = z.infer<typeof ResponseSchema>;
 }
