@@ -10,6 +10,7 @@ export const FEDARISHA_NODE_ROUTES = {
 } as const;
 
 export interface ProvisionFedarishaUserRequest {
+    // Historical wire name; upstream users are identified by decimal id.
     userUuid: string;
     inboundTag: string;
     prefix: string;
@@ -40,8 +41,8 @@ export interface RevokeFedarishaUserResponse {
 // Probe verifies that the cached PAK still authenticates against the bucket
 // the node currently serves for this inbound. Node should resolve bucket /
 // endpoint / region from its xray config (so admin-side bucket swaps are
-// caught for free) and issue a cheap auth-touching call (HeadBucket or
-// ListObjectsV2 with MaxKeys=1) using the supplied user creds.
+// caught for free) and test PUT/HEAD/DELETE on an object inside the user's
+// prefix using the supplied credentials.
 //
 // `exists: false` means the credentials authenticated but no longer have
 // access (deleted PAK, revoked permissions, prefix wiped). `exists: true`

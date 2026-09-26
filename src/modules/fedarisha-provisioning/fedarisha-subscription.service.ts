@@ -31,7 +31,12 @@ export interface IBuildFedarishaOutboundParams {
 }
 
 export interface IFedarishaOutboundData {
-    storage: Required<Pick<IRawStorage, 'type' | 'bucket' | 'endpoint' | 'region' | 'prefix' | 'accessKey' | 'secretKey'>> & {
+    storage: Required<
+        Pick<
+            IRawStorage,
+            'type' | 'bucket' | 'endpoint' | 'region' | 'prefix' | 'accessKey' | 'secretKey'
+        >
+    > & {
         sessionsDir: string | null;
     };
     tuning: IRawTuning | null;
@@ -119,7 +124,7 @@ export class FedarishaSubscriptionService {
                 endpoint: baseStorage.endpoint,
                 region: baseStorage.region ?? '',
                 prefix: creds.prefix,
-                sessionsDir: baseStorage.sessionsDir ?? null,
+                sessionsDir: baseStorage.sessionsDir?.trim() || 'sessions',
                 accessKey: creds.accessKey,
                 secretKey: creds.secretKey,
             },
