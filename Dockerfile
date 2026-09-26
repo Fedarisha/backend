@@ -11,12 +11,12 @@ RUN --mount=type=secret,id=clone_token apk add --no-cache curl unzip ca-certific
     && if [ -s /run/secrets/clone_token ]; then AUTH_HEADER="Authorization: token $(cat /run/secrets/clone_token)"; fi \
     && curl -fL -H "$AUTH_HEADER" ${FRONTEND_URL} -o frontend.zip \
     && unzip frontend.zip -d frontend_temp \
-    && curl -L https://validator.remna.dev/wasm_exec.js -o frontend_temp/dist/assets/wasm_exec.js \
-    && curl -L https://validator.remna.dev/xray.schema.json -o frontend_temp/dist/assets/xray.schema.json \
-    && curl -L https://validator.remna.dev/xray.schema.cn.json -o frontend_temp/dist/assets/xray.schema.cn.json \
-    && curl -L ${SINGBOX_SCHEMA_URL} -o frontend_temp/dist/assets/singbox.schema.json \
-    && curl -L ${MIHOMO_SCHEMA_URL} -o frontend_temp/dist/assets/mihomo.schema.json \
-    && curl -L https://validator.remna.dev/main.wasm -o frontend_temp/dist/assets/main.wasm
+    && curl -fL https://remnawave.github.io/xray-monaco-editor/wasm_exec.js -o frontend_temp/dist/assets/wasm_exec.js \
+    && curl -fL https://remnawave.github.io/xray-monaco-editor/xray.schema.json -o frontend_temp/dist/assets/xray.schema.json \
+    && curl -fL https://remnawave.github.io/xray-monaco-editor/xray.schema.cn.json -o frontend_temp/dist/assets/xray.schema.cn.json \
+    && curl -fL ${SINGBOX_SCHEMA_URL} -o frontend_temp/dist/assets/singbox.schema.json \
+    && curl -fL ${MIHOMO_SCHEMA_URL} -o frontend_temp/dist/assets/mihomo.schema.json \
+    && curl -fL https://remnawave.github.io/xray-monaco-editor/main.wasm -o frontend_temp/dist/assets/main.wasm
 
 FROM node:24.21-trixie-slim AS backend-build
 WORKDIR /opt/app
