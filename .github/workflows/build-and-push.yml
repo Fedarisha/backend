@@ -35,7 +35,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY || github.token }}
+          password: ${{ github.token }}
       - name: Prepare build metadata
         id: meta
         env:
@@ -102,7 +102,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.TOKEN_GH_DEPLOY || github.token }}
+          password: ${{ github.token }}
       - name: Publish multiarch image
         working-directory: ${{ runner.temp }}/digests
         run: |
