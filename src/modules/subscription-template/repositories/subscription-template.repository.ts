@@ -1,9 +1,12 @@
-import { Prisma } from '@prisma/client';
-
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { TransactionHost } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
+import { Prisma } from '@prisma/client';
+import { sql } from 'kysely';
+
 import { Injectable } from '@nestjs/common';
 
+import { TxKyselyService } from '@common/database/tx-kysely.service';
+import { values } from '@common/helpers/kysely/values';
 import { ICrud } from '@common/types/crud-port';
 import { TSubscriptionTemplateType } from '@libs/contracts/constants';
 
@@ -15,6 +18,7 @@ export class SubscriptionTemplateRepository implements ICrud<SubscriptionTemplat
     constructor(
         private readonly prisma: TransactionHost<TransactionalAdapterPrisma>,
         private readonly converter: SubscriptionTemplateConverter,
+        private readonly qb: TxKyselyService,
     ) {}
 
     public async create(entity: SubscriptionTemplateEntity): Promise<SubscriptionTemplateEntity> {
@@ -59,12 +63,14 @@ export class SubscriptionTemplateRepository implements ICrud<SubscriptionTemplat
     }
 
     public async findByCriteria(
-        dto: Partial<SubscriptionTemplateEntity>,
+        dto: Partial<Omit<SubscriptionTemplateEntity, 'tags'>>,
     ): Promise<SubscriptionTemplateEntity[]> {
         const model = this.converter.fromEntityToPrismaModel(dto as SubscriptionTemplateEntity);
+        /* eslint-disable @typescript-eslint/no-unused-vars */
+        const { tags, ...rest } = model;
         const list = await this.prisma.tx.subscriptionTemplate.findMany({
             where: {
-                ...model,
+                ...rest,
                 templateJson: model.templateJson
                     ? { equals: model.templateJson as Prisma.InputJsonValue }
                     : undefined,
@@ -109,6 +115,7 @@ export class SubscriptionTemplateRepository implements ICrud<SubscriptionTemplat
                 name: true,
                 templateType: true,
                 uuid: true,
+                tags: true,
                 ...(withContent
                     ? {
                           templateYaml: true,
@@ -159,18 +166,48 @@ export class SubscriptionTemplateRepository implements ICrud<SubscriptionTemplat
             viewPosition: number;
         }[],
     ): Promise<boolean> {
-        await this.prisma.withTransaction(async () => {
-            for (const { uuid, viewPosition } of dto) {
-                await this.prisma.tx.subscriptionTemplate.updateMany({
-                    where: { uuid },
-                    data: { viewPosition },
-                });
-            }
-        });
+        if (dto.length === 0) return true;
+
+        const v = values(
+            dto.map(({ uuid, viewPosition }) => ({
+                uuid: sql<string>`${uuid}::uuid`,
+                viewPosition: sql<number>`${viewPosition}::int`,
+            })),
+            'v',
+        );
+
+        await this.qb.kysely
+            .updateTable('subscriptionTemplates')
+            .from(v)
+            .set((eb) => ({ viewPosition: eb.ref('v.viewPosition') }))
+            .whereRef('subscriptionTemplates.uuid', '=', 'v.uuid')
+            .execute();
 
         await this.prisma.tx
             .$executeRaw`SELECT setval('subscription_templates_view_position_seq', (SELECT MAX(view_position) FROM subscription_templates) + 1)`;
 
         return true;
+    }
+
+    public async findAllTags(): Promise<string[]> {
+        const result = await this.qb.kysely
+            .selectFrom('subscriptionTemplates')
+            .select(sql<string>`unnest(tags)`.as('tag'))
+            .distinct()
+            .where('tags', 'is not', null)
+            .orderBy('tag')
+            .execute();
+
+        return result.map((value) => value.tag);
+    }
+
+    public async setTags(uuid: string, tags: string[]): Promise<string[]> {
+        const result = await this.prisma.tx.subscriptionTemplate.update({
+            where: { uuid },
+            data: { tags },
+            select: { tags: true },
+        });
+
+        return result.tags;
     }
 }

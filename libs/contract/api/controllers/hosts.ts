@@ -11,14 +11,14 @@ export const HOSTS_ROUTES = {
 
     ACTIONS: {
         REORDER: `${HOST_ACTIONS_ROUTE}/reorder`,
+        CLONE: `${HOST_ACTIONS_ROUTE}/clone`,
     },
 
     BULK: {
         ENABLE_HOSTS: 'bulk/enable',
         DISABLE_HOSTS: 'bulk/disable',
         DELETE_HOSTS: 'bulk/delete',
-        SET_INBOUND: 'bulk/set-inbound',
-        SET_PORT: 'bulk/set-port',
+        UPDATE: 'bulk/update',
     },
 
     TAGS: {

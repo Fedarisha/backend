@@ -1,7 +1,11 @@
-import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { TransactionHost } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
+import { sql } from 'kysely';
+
 import { Injectable } from '@nestjs/common';
 
+import { TxKyselyService } from '@common/database/tx-kysely.service';
+import { values } from '@common/helpers/kysely/values';
 import { ICrud } from '@common/types/crud-port';
 
 import { SubscriptionPageConfigEntity } from '../entities/sub-page-config.entity';
@@ -12,6 +16,7 @@ export class SubscriptionPageConfigRepository implements ICrud<SubscriptionPageC
     constructor(
         private readonly prisma: TransactionHost<TransactionalAdapterPrisma>,
         private readonly converter: SubscriptionPageConfigConverter,
+        private readonly qb: TxKyselyService,
     ) {}
 
     public async create(
@@ -60,7 +65,7 @@ export class SubscriptionPageConfigRepository implements ICrud<SubscriptionPageC
     ): Promise<SubscriptionPageConfigEntity[]> {
         const model = this.converter.fromEntityToPrismaModel(dto as SubscriptionPageConfigEntity);
         /* eslint-disable @typescript-eslint/no-unused-vars */
-        const { config, ...rest } = model;
+        const { config, tags, ...rest } = model;
         const list = await this.prisma.tx.subscriptionPageConfig.findMany({
             where: {
                 ...rest,
@@ -102,6 +107,7 @@ export class SubscriptionPageConfigRepository implements ICrud<SubscriptionPageC
                 viewPosition: true,
                 name: true,
                 uuid: true,
+                tags: true,
                 ...(withContent
                     ? {
                           config: true,
@@ -123,18 +129,48 @@ export class SubscriptionPageConfigRepository implements ICrud<SubscriptionPageC
             viewPosition: number;
         }[],
     ): Promise<boolean> {
-        await this.prisma.withTransaction(async () => {
-            for (const { uuid, viewPosition } of dto) {
-                await this.prisma.tx.subscriptionPageConfig.updateMany({
-                    where: { uuid },
-                    data: { viewPosition },
-                });
-            }
-        });
+        if (dto.length === 0) return true;
+
+        const v = values(
+            dto.map(({ uuid, viewPosition }) => ({
+                uuid: sql<string>`${uuid}::uuid`,
+                viewPosition: sql<number>`${viewPosition}::int`,
+            })),
+            'v',
+        );
+
+        await this.qb.kysely
+            .updateTable('subscriptionPageConfig')
+            .from(v)
+            .set((eb) => ({ viewPosition: eb.ref('v.viewPosition') }))
+            .whereRef('subscriptionPageConfig.uuid', '=', 'v.uuid')
+            .execute();
 
         await this.prisma.tx
             .$executeRaw`SELECT setval('subscription_page_config_view_position_seq', (SELECT MAX(view_position) FROM subscription_page_config) + 1)`;
 
         return true;
+    }
+
+    public async findAllTags(): Promise<string[]> {
+        const result = await this.qb.kysely
+            .selectFrom('subscriptionPageConfig')
+            .select(sql<string>`unnest(tags)`.as('tag'))
+            .distinct()
+            .where('tags', 'is not', null)
+            .orderBy('tag')
+            .execute();
+
+        return result.map((value) => value.tag);
+    }
+
+    public async setTags(uuid: string, tags: string[]): Promise<string[]> {
+        const result = await this.prisma.tx.subscriptionPageConfig.update({
+            where: { uuid },
+            data: { tags },
+            select: { tags: true },
+        });
+
+        return result.tags;
     }
 }

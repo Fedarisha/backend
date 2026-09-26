@@ -1,0 +1,76 @@
+diff --git a/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.d.ts b/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.d.ts
+index d131b3b..fd7dece 100644
+--- a/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.d.ts
++++ b/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.d.ts
+@@ -42,6 +42,10 @@ export declare namespace AddUserCommand {
+             tag: z.ZodString;
+             username: z.ZodString;
+             password: z.ZodString;
++        }, z.core.$strip>, z.ZodObject<{
++            type: z.ZodLiteral<"fedarisha">;
++            tag: z.ZodString;
++            username: z.ZodString;
+         }, z.core.$strip>], "type">>;
+         hashData: z.ZodObject<{
+             vlessUuid: z.ZodUUID;
+diff --git a/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.js b/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.js
+index 3781ed7..d77a745 100644
+--- a/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.js
++++ b/node_modules/@remnawave/node-contract/build/commands/handler/add-user.command.js
+@@ -49,6 +49,11 @@ var AddUserCommand;
+         username: zod_1.z.string(),
+         password: zod_1.z.string(),
+     });
++    const BaseFedarishaUser = zod_1.z.object({
++        type: zod_1.z.literal('fedarisha'),
++        tag: zod_1.z.string(),
++        username: zod_1.z.string(),
++    });
+     AddUserCommand.RequestSchema = zod_1.z.object({
+         data: zod_1.z.array(zod_1.z.discriminatedUnion('type', [
+             BaseTrojanUser,
+@@ -56,6 +61,7 @@ var AddUserCommand;
+             BaseShadowsocksUser,
+             BaseShadowsocks22User,
+             BaseHysteriaUser,
++            BaseFedarishaUser,
+         ])),
+         hashData: zod_1.z.object({
+             vlessUuid: zod_1.z.uuid(),
+diff --git a/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.d.ts b/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.d.ts
+index de6b37b..6632f88 100644
+--- a/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.d.ts
++++ b/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.d.ts
+@@ -23,6 +23,9 @@ export declare namespace AddUsersCommand {
+             }, z.core.$strip>, z.ZodObject<{
+                 type: z.ZodLiteral<"hysteria">;
+                 tag: z.ZodString;
++            }, z.core.$strip>, z.ZodObject<{
++                type: z.ZodLiteral<"fedarisha">;
++                tag: z.ZodString;
+             }, z.core.$strip>], "type">>;
+             userData: z.ZodObject<{
+                 userId: z.ZodString;
+diff --git a/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.js b/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.js
+index e0c327f..4fbd721 100644
+--- a/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.js
++++ b/node_modules/@remnawave/node-contract/build/commands/handler/add-users.command.js
+@@ -27,6 +27,10 @@ var AddUsersCommand;
+         type: zod_1.z.literal('hysteria'),
+         tag: zod_1.z.string(),
+     });
++    const BaseFedarishaUser = zod_1.z.object({
++        type: zod_1.z.literal('fedarisha'),
++        tag: zod_1.z.string(),
++    });
+     AddUsersCommand.RequestSchema = zod_1.z.object({
+         affectedInboundTags: zod_1.z.array(zod_1.z.string()),
+         users: zod_1.z.array(zod_1.z.object({
+@@ -36,6 +40,7 @@ var AddUsersCommand;
+                 BaseShadowsocksUser,
+                 BaseShadowsocks22User,
+                 BaseHysteriaUser,
++                BaseFedarishaUser,
+             ])),
+             userData: zod_1.z.object({
+                 userId: zod_1.z.string(),

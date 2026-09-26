@@ -1,18 +1,24 @@
+import { Transactional } from '@nestjs-cls/transactional';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 
 import { fail, ok, TResult } from '@common/types';
+import { cloneString } from '@common/utils/clone-string.util';
+import { nullifyEmpty } from '@common/utils/convert-type';
 import { ERRORS } from '@libs/contracts/constants';
 
-import { GetSubscriptionTemplateByUuidQuery } from '@modules/subscription-template/queries/get-template-by-uuid';
 import { GetConfigProfileByUuidQuery } from '@modules/config-profiles/queries/get-config-profile-by-uuid';
-import { ReorderHostRequestDto } from '@modules/hosts/dtos/reorder-hosts.dto';
+import { GetSubscriptionTemplateByUuidQuery } from '@modules/subscription-template/queries/get-template-by-uuid';
 
-import { DeleteHostResponseModel } from './models/delete-host.response.model';
-import { HostsRepository } from './repositories/hosts.repository';
-import { CreateHostRequestDto } from './dtos/create-host.dto';
+import {
+    CreateHostBodyDto,
+    ReorderHostsBodyDto,
+    UpdateHostBodyDto,
+    UpdateManyHostsBodyDto,
+} from './dtos';
 import { HostsEntity } from './entities/hosts.entity';
-import { UpdateHostRequestDto } from './dtos';
+import { HostsRepository } from './repositories/hosts.repository';
 
 @Injectable()
 export class HostsService {
@@ -22,7 +28,7 @@ export class HostsService {
         private readonly queryBus: QueryBus,
     ) {}
 
-    public async createHost(dto: CreateHostRequestDto): Promise<TResult<HostsEntity>> {
+    public async createHost(dto: CreateHostBodyDto): Promise<TResult<HostsEntity>> {
         try {
             if (dto.xrayJsonTemplateUuid) {
                 const xrayJsonTemplate = await this.queryBus.execute(
@@ -38,60 +44,16 @@ export class HostsService {
                 }
             }
 
-            let xHttpExtraParams: null | object | undefined;
-            if (dto.xHttpExtraParams !== undefined && dto.xHttpExtraParams !== null) {
-                xHttpExtraParams = dto.xHttpExtraParams;
-            } else if (dto.xHttpExtraParams === null) {
-                xHttpExtraParams = null;
-            } else {
-                xHttpExtraParams = undefined;
-            }
-
-            let muxParams: null | object | undefined;
-            if (dto.muxParams !== undefined && dto.muxParams !== null) {
-                if (Object.keys(dto.muxParams).length === 0) {
-                    muxParams = null;
-                } else {
-                    muxParams = dto.muxParams;
-                }
-            } else if (dto.muxParams === null) {
-                muxParams = null;
-            } else {
-                muxParams = undefined;
-            }
-
-            let sockoptParams: null | object | undefined;
-            if (dto.sockoptParams !== undefined && dto.sockoptParams !== null) {
-                if (Object.keys(dto.sockoptParams).length === 0) {
-                    sockoptParams = null;
-                } else {
-                    sockoptParams = dto.sockoptParams;
-                }
-            } else if (dto.sockoptParams === null) {
-                sockoptParams = null;
-            } else {
-                sockoptParams = undefined;
-            }
-
-            let finalMask: null | object | undefined;
-            if (dto.finalMask !== undefined && dto.finalMask !== null) {
-                finalMask = dto.finalMask;
-            } else if (dto.finalMask === null) {
-                finalMask = null;
-            } else {
-                finalMask = undefined;
-            }
-
-            let serverDescription: null | string | undefined;
-            if (dto.serverDescription !== undefined && dto.serverDescription !== null) {
-                serverDescription = dto.serverDescription;
-            } else if (dto.serverDescription === null) {
-                serverDescription = null;
-            } else {
-                serverDescription = undefined;
-            }
-
-            const { inbound: inboundObj, nodes, excludedInternalSquads, ...rest } = dto;
+            const {
+                inbound: inboundObj,
+                nodes,
+                internalSquads,
+                xhttpExtraParams,
+                muxParams,
+                sockoptParams,
+                finalMask,
+                ...rest
+            } = dto;
 
             const configProfile = await this.queryBus.execute(
                 new GetConfigProfileByUuidQuery(inboundObj.configProfileUuid),
@@ -111,13 +73,13 @@ export class HostsService {
             const hostEntity = new HostsEntity({
                 ...rest,
                 address: dto.address.trim(),
-                xHttpExtraParams,
-                muxParams,
-                sockoptParams,
-                finalMask,
+                xhttpExtraParams: nullifyEmpty(xhttpExtraParams),
+                muxParams: nullifyEmpty(muxParams),
+                sockoptParams: nullifyEmpty(sockoptParams),
+                finalMask: nullifyEmpty(finalMask),
                 configProfileUuid: configProfile.response.uuid,
                 configProfileInboundUuid: configProfileInbound.uuid,
-                serverDescription,
+                internalSquadsMode: internalSquads?.mode,
             });
 
             const result = await this.hostsRepository.create(hostEntity);
@@ -131,12 +93,12 @@ export class HostsService {
                 });
             }
 
-            if (excludedInternalSquads !== undefined && excludedInternalSquads.length > 0) {
-                await this.hostsRepository.addExcludedInternalSquadsToHost(
+            if (internalSquads !== undefined && internalSquads.squads.length > 0) {
+                await this.hostsRepository.addInternalSquadsToHost(
                     result.uuid,
-                    excludedInternalSquads,
+                    internalSquads.squads,
                 );
-                result.excludedInternalSquads = excludedInternalSquads.map((squad) => {
+                result.internalSquads = internalSquads.squads.map((squad) => {
                     return {
                         squadUuid: squad,
                     };
@@ -151,9 +113,9 @@ export class HostsService {
         }
     }
 
-    public async updateHost(dto: UpdateHostRequestDto): Promise<TResult<HostsEntity>> {
+    public async updateHost(dto: UpdateHostBodyDto): Promise<TResult<HostsEntity>> {
         try {
-            const { inbound: inboundObj, nodes, excludedInternalSquads, ...rest } = dto;
+            const { inbound: inboundObj, nodes, internalSquads, ...rest } = dto;
 
             const host = await this.hostsRepository.findByUUID(dto.uuid);
             if (!host) return fail(ERRORS.HOST_NOT_FOUND);
@@ -172,13 +134,13 @@ export class HostsService {
                 }
             }
 
-            let xHttpExtraParams: null | object | undefined;
-            if (dto.xHttpExtraParams !== undefined && dto.xHttpExtraParams !== null) {
-                xHttpExtraParams = dto.xHttpExtraParams;
-            } else if (dto.xHttpExtraParams === null) {
-                xHttpExtraParams = null;
+            let xhttpExtraParams: null | object | undefined;
+            if (dto.xhttpExtraParams !== undefined && dto.xhttpExtraParams !== null) {
+                xhttpExtraParams = dto.xhttpExtraParams;
+            } else if (dto.xhttpExtraParams === null) {
+                xhttpExtraParams = null;
             } else {
-                xHttpExtraParams = undefined;
+                xhttpExtraParams = undefined;
             }
 
             let muxParams: null | object | undefined;
@@ -253,24 +215,25 @@ export class HostsService {
                 await this.hostsRepository.addNodesToHost(host.uuid, nodes);
             }
 
-            if (excludedInternalSquads !== undefined) {
-                await this.hostsRepository.clearExcludedInternalSquadsFromHost(host.uuid);
-                await this.hostsRepository.addExcludedInternalSquadsToHost(
+            if (internalSquads !== undefined) {
+                await this.hostsRepository.clearInternalSquadsFromHost(host.uuid);
+                await this.hostsRepository.addInternalSquadsToHost(
                     host.uuid,
-                    excludedInternalSquads,
+                    internalSquads.squads,
                 );
             }
 
             const result = await this.hostsRepository.update({
                 ...rest,
                 address: dto.address ? dto.address.trim() : undefined,
-                xHttpExtraParams,
+                xhttpExtraParams,
                 muxParams,
                 sockoptParams,
                 configProfileUuid,
                 configProfileInboundUuid,
                 serverDescription,
                 finalMask,
+                internalSquadsMode: internalSquads?.mode,
             });
 
             return ok(result);
@@ -281,15 +244,15 @@ export class HostsService {
         }
     }
 
-    public async deleteHost(hostUuid: string): Promise<TResult<DeleteHostResponseModel>> {
+    public async deleteHost(hostUuid: string): Promise<TResult<boolean>> {
         try {
             const host = await this.hostsRepository.findByUUID(hostUuid);
             if (!host) {
                 return fail(ERRORS.HOST_NOT_FOUND);
             }
-            const result = await this.hostsRepository.deleteByUUID(host.uuid);
+            await this.hostsRepository.deleteByUUID(host.uuid);
 
-            return ok(new DeleteHostResponseModel({ isDeleted: result }));
+            return ok(true);
         } catch (error) {
             this.logger.error(error);
             this.logger.error(JSON.stringify(error));
@@ -297,7 +260,7 @@ export class HostsService {
         }
     }
 
-    public async getAllHosts(): Promise<TResult<HostsEntity[]>> {
+    public async getHosts(): Promise<TResult<HostsEntity[]>> {
         try {
             const result = await this.hostsRepository.findAll();
 
@@ -308,7 +271,7 @@ export class HostsService {
         }
     }
 
-    public async getOneHost(hostUuid: string): Promise<TResult<HostsEntity>> {
+    public async getHost(hostUuid: string): Promise<TResult<HostsEntity>> {
         try {
             const result = await this.hostsRepository.findByUUID(hostUuid);
 
@@ -323,7 +286,61 @@ export class HostsService {
         }
     }
 
-    public async reorderHosts(dto: ReorderHostRequestDto): Promise<
+    public async cloneHost(cloneFromUuid: string): Promise<TResult<HostsEntity>> {
+        try {
+            const host = await this.hostsRepository.findByUUID(cloneFromUuid);
+
+            if (!host) {
+                return fail(ERRORS.HOST_NOT_FOUND);
+            }
+
+            return ok(await this.cloneHostTransactional(host));
+        } catch (error) {
+            this.logger.error(error);
+
+            return fail(ERRORS.CLONE_HOST_ERROR);
+        }
+    }
+
+    @Transactional()
+    private async cloneHostTransactional(host: HostsEntity): Promise<HostsEntity> {
+        await this.hostsRepository.shiftViewPositionsAfter(host.viewPosition);
+
+        const { uuid: _uuid, nodes, internalSquads, ...rest } = host;
+
+        const clone = await this.hostsRepository.create(
+            new HostsEntity({
+                ...rest,
+                remark: cloneString(host.remark),
+                isDisabled: true,
+                viewPosition: host.viewPosition + 1,
+            }),
+        );
+
+        if (nodes.length > 0) {
+            await this.hostsRepository.addNodesToHost(
+                clone.uuid,
+                nodes.map((node) => node.nodeUuid),
+            );
+
+            clone.nodes = nodes;
+        }
+
+        if (internalSquads.length > 0) {
+            await this.hostsRepository.addInternalSquadsToHost(
+                clone.uuid,
+                internalSquads.map((internalSquad) => internalSquad.squadUuid),
+            );
+
+            clone.internalSquads = internalSquads;
+        }
+
+        await this.hostsRepository.syncViewPositionSequence();
+
+        return clone;
+    }
+
+    public async reorderHosts(dto: ReorderHostsBodyDto): Promise<
         TResult<{
             isUpdated: boolean;
         }>
@@ -338,127 +355,130 @@ export class HostsService {
         }
     }
 
-    public async deleteHosts(uuids: string[]): Promise<TResult<HostsEntity[]>> {
+    public async deleteHosts(uuids: string[]): Promise<TResult<boolean>> {
         try {
             await this.hostsRepository.deleteMany(uuids);
 
-            const result = await this.getAllHosts();
-
-            if (!result.isOk) {
-                return fail(ERRORS.DELETE_HOSTS_ERROR);
-            }
-
-            return ok(result.response);
+            return ok(true);
         } catch (error) {
             this.logger.error(error);
             return fail(ERRORS.DELETE_HOSTS_ERROR);
         }
     }
 
-    public async bulkEnableHosts(uuids: string[]): Promise<TResult<HostsEntity[]>> {
+    public async bulkEnableHosts(uuids: string[]): Promise<TResult<boolean>> {
         try {
             await this.hostsRepository.enableMany(uuids);
 
-            const result = await this.getAllHosts();
-
-            if (!result.isOk) {
-                return fail(ERRORS.BULK_ENABLE_HOSTS_ERROR);
-            }
-
-            return ok(result.response);
+            return ok(true);
         } catch (error) {
             this.logger.error(error);
             return fail(ERRORS.BULK_ENABLE_HOSTS_ERROR);
         }
     }
 
-    public async bulkDisableHosts(uuids: string[]): Promise<TResult<HostsEntity[]>> {
+    public async bulkDisableHosts(uuids: string[]): Promise<TResult<boolean>> {
         try {
             await this.hostsRepository.disableMany(uuids);
 
-            const result = await this.getAllHosts();
-
-            if (!result.isOk) {
-                return fail(ERRORS.BULK_DISABLE_HOSTS_ERROR);
-            }
-
-            return ok(result.response);
+            return ok(true);
         } catch (error) {
             this.logger.error(error);
             return fail(ERRORS.BULK_DISABLE_HOSTS_ERROR);
         }
     }
 
-    public async setInboundToHosts(
-        uuids: string[],
-        configProfileUuid: string,
-        configProfileInboundUuid: string,
-    ): Promise<TResult<HostsEntity[]>> {
+    public async getHostsTags(): Promise<TResult<string[]>> {
         try {
-            const configProfile = await this.queryBus.execute(
-                new GetConfigProfileByUuidQuery(configProfileUuid),
-            );
-
-            if (!configProfile.isOk) {
-                return fail(ERRORS.CONFIG_PROFILE_NOT_FOUND);
-            }
-
-            const configProfileInbound = configProfile.response.inbounds.find(
-                (inbound) => inbound.uuid === configProfileInboundUuid,
-            );
-
-            if (!configProfileInbound) {
-                return fail(ERRORS.CONFIG_PROFILE_INBOUND_NOT_FOUND_IN_SPECIFIED_PROFILE);
-            }
-
-            await this.hostsRepository.setInboundToManyHosts(
-                uuids,
-                configProfileUuid,
-                configProfileInboundUuid,
-            );
-
-            const result = await this.getAllHosts();
-
-            if (!result.isOk) {
-                return fail(ERRORS.SET_INBOUND_TO_HOSTS_ERROR);
-            }
-
-            if (!result.isOk) {
-                return fail(ERRORS.SET_INBOUND_TO_HOSTS_ERROR);
-            }
-
-            return ok(result.response);
-        } catch (error) {
-            this.logger.error(error);
-            return fail(ERRORS.SET_INBOUND_TO_HOSTS_ERROR);
-        }
-    }
-
-    public async setPortToHosts(uuids: string[], port: number): Promise<TResult<HostsEntity[]>> {
-        try {
-            await this.hostsRepository.setPortToManyHosts(uuids, port);
-
-            const result = await this.getAllHosts();
-
-            if (!result.isOk) {
-                return fail(ERRORS.SET_PORT_TO_HOSTS_ERROR);
-            }
-
-            return ok(result.response);
-        } catch (error) {
-            this.logger.error(error);
-            return fail(ERRORS.SET_PORT_TO_HOSTS_ERROR);
-        }
-    }
-
-    public async getAllHostTags(): Promise<TResult<string[]>> {
-        try {
-            const result = await this.hostsRepository.getAllHostTags();
+            const result = await this.hostsRepository.findAllTags();
 
             return ok(result);
         } catch (error) {
             this.logger.error(error);
             return fail(ERRORS.GET_ALL_HOST_TAGS_ERROR);
+        }
+    }
+
+    public async updateManyHosts(dto: UpdateManyHostsBodyDto): Promise<TResult<boolean>> {
+        try {
+            const {
+                uuids,
+                inbound: inboundObj,
+                nodes,
+                internalSquads,
+                xhttpExtraParams,
+                muxParams,
+                sockoptParams,
+                finalMask,
+                ...rest
+            } = dto;
+
+            if (dto.xrayJsonTemplateUuid) {
+                const xrayJsonTemplate = await this.queryBus.execute(
+                    new GetSubscriptionTemplateByUuidQuery(dto.xrayJsonTemplateUuid),
+                );
+
+                if (!xrayJsonTemplate.isOk) {
+                    return fail(ERRORS.SUBSCRIPTION_TEMPLATE_NOT_FOUND);
+                }
+
+                if (xrayJsonTemplate.response.templateType !== 'XRAY_JSON') {
+                    return fail(ERRORS.TEMPLATE_TYPE_NOT_ALLOWED);
+                }
+            }
+
+            let configProfileUuid: string | undefined;
+            let configProfileInboundUuid: string | undefined;
+            if (inboundObj) {
+                const configProfile = await this.queryBus.execute(
+                    new GetConfigProfileByUuidQuery(inboundObj.configProfileUuid),
+                );
+
+                if (!configProfile.isOk) {
+                    return fail(ERRORS.CONFIG_PROFILE_NOT_FOUND);
+                }
+
+                const configProfileInbound = configProfile.response.inbounds.find(
+                    (inbound) => inbound.uuid === inboundObj.configProfileInboundUuid,
+                );
+
+                if (!configProfileInbound) {
+                    return fail(ERRORS.CONFIG_PROFILE_INBOUND_NOT_FOUND_IN_SPECIFIED_PROFILE);
+                }
+
+                configProfileUuid = configProfile.response.uuid;
+                configProfileInboundUuid = configProfileInbound.uuid;
+            }
+
+            if (nodes !== undefined) {
+                await this.hostsRepository.clearNodesFromHosts(uuids);
+                await this.hostsRepository.addNodesToHosts(uuids, nodes);
+            }
+
+            if (internalSquads !== undefined) {
+                await this.hostsRepository.clearInternalSquadsFromHosts(uuids);
+                await this.hostsRepository.addInternalSquadsToHosts(uuids, internalSquads.squads);
+            }
+
+            await this.hostsRepository.updateMany({
+                uuids,
+                data: {
+                    ...rest,
+                    address: dto.address ? dto.address.trim() : undefined,
+                    xhttpExtraParams: nullifyEmpty(xhttpExtraParams),
+                    muxParams: nullifyEmpty(muxParams),
+                    sockoptParams: nullifyEmpty(sockoptParams),
+                    finalMask: nullifyEmpty(finalMask),
+                    configProfileUuid,
+                    configProfileInboundUuid,
+                    internalSquadsMode: internalSquads?.mode,
+                },
+            });
+
+            return ok(true);
+        } catch (error) {
+            this.logger.error(error);
+            return fail(ERRORS.UPDATE_HOSTS_ERROR);
         }
     }
 }

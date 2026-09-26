@@ -1,39 +1,23 @@
-process.env.DATABASE_URL = 'postgresql://postgres:postgres@remnawave-db:5432/postgres';
-process.env.JWT_AUTH_SECRET = 'mock';
-process.env.JWT_API_TOKENS_SECRET = 'mock';
-process.env.FRONT_END_DOMAIN = 'mock';
-process.env.METRICS_USER = 'mock';
-process.env.METRICS_PASS = 'mock';
-process.env.SUB_PUBLIC_DOMAIN = 'mock';
-process.env.IS_DOCS_ENABLED = 'true';
-process.env.NODE_ENV = 'development';
-process.env.REDIS_HOST = 'localhost';
-process.env.REDIS_PORT = '6379';
-process.env.INSTANCE_TYPE = 'api';
-
-import { utilities as nestWinstonModuleUtilities, WinstonModule } from 'nest-winston';
-import { patchNestJsSwagger, ZodValidationPipe } from 'nestjs-zod';
+import { ROOT } from '@contract/api';
+import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+import { utilities as nestWinstonModuleUtilities, WinstonModule } from 'nest-winston';
 import { createLogger } from 'winston';
 import * as winston from 'winston';
-import utc from 'dayjs/plugin/utc';
-import dayjs from 'dayjs';
-
-import { ROOT } from '@contract/api';
+import 'zod/compile';
 
 import { NestFactory } from '@nestjs/core';
 
-import { ghActionsDocs } from '@common/utils/startup-app/gh-actions-docs';
 import { isDevelopment } from '@common/utils/startup-app';
+import { ghActionsDocs } from '@common/utils/startup-app/gh-actions-docs';
 
 import { AppModule } from '../../app.module';
 
 dayjs.extend(utc);
 dayjs.extend(relativeTime);
 dayjs.extend(timezone);
-
-patchNestJsSwagger();
 
 // const levels = {
 //     error: 0,
@@ -62,21 +46,22 @@ const logger = createLogger({
 
 async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule, {
+        preview: true,
         logger: WinstonModule.createLogger({
             instance: logger,
         }),
     });
 
-    ghActionsDocs(app);
-
     app.setGlobalPrefix(ROOT);
 
-    app.useGlobalPipes(new ZodValidationPipe());
+    const specPath = await ghActionsDocs(app);
 
-    app.enableShutdownHooks();
+    logger.info(`OpenAPI spec written to ${specPath}`);
 
-    await app.init();
-}
-bootstrap().catch(() => {
     process.exit(0);
+}
+bootstrap().catch((error) => {
+    logger.error(`Failed to generate OpenAPI spec: ${error}`);
+
+    process.exit(1);
 });

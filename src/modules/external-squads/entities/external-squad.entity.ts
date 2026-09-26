@@ -3,7 +3,7 @@ import z from 'zod';
 
 import {
     ExternalSquadHostOverridesSchema,
-    ExternalSquadResponseHeadersSchema,
+    ExternalSquadResponseHeadersAddSchema,
     ExternalSquadSubscriptionSettingsSchema,
     TCustomRemarks,
     THwidSettings,
@@ -13,10 +13,12 @@ export class ExternalSquadEntity implements ExternalSquads {
     public uuid: string;
     public viewPosition: number;
     public name: string;
+    public tags: string[];
 
     public subscriptionSettings: z.infer<typeof ExternalSquadSubscriptionSettingsSchema> | null;
     public hostOverrides: z.infer<typeof ExternalSquadHostOverridesSchema> | null;
-    public responseHeaders: z.infer<typeof ExternalSquadResponseHeadersSchema> | null;
+    public responseHeadersAdd: z.infer<typeof ExternalSquadResponseHeadersAddSchema>;
+    public responseHeadersRemove: string[];
 
     public hwidSettings: THwidSettings | null;
     public customRemarks: TCustomRemarks | null;
