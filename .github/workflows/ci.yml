@@ -1,8 +1,10 @@
-name: Build OpenAPI specification
+name: Build
 
 on:
   push:
-    tags: ['*']
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,8 +22,4 @@ jobs:
       - run: npm ci
       - run: npm run migrate:generate
       - run: npm run generate:openapi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: openapi-specification
-          path: openapi.json
-          if-no-files-found: error
+      - run: npm run build

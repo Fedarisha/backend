@@ -59,8 +59,8 @@ FROM node:24.21-trixie-slim
 
 LABEL org.opencontainers.image.title="Remnawave"
 LABEL org.opencontainers.image.description="Powerful proxy management tool"
-LABEL org.opencontainers.image.url="https://github.com/remnawave/backend"
-LABEL org.opencontainers.image.source="https://github.com/remnawave/backend"
+LABEL org.opencontainers.image.url="https://github.com/Fedarisha/backend"
+LABEL org.opencontainers.image.source="https://github.com/Fedarisha/backend"
 LABEL org.opencontainers.image.vendor="Remnawave"
 LABEL org.opencontainers.image.licenses="AGPL-3.0"
 LABEL org.opencontainers.image.documentation="https://docs.rw"
